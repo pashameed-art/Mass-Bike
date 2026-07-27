@@ -16,15 +16,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --teal:#0B3D3E;
-    --teal-dark:#062827;
-    --paper:#FAF6EC;
-    --mustard:#E8A93D;
-    --mustard-dark:#C98A22;
-    --rust:#B23A2E;
-    --ink:#1F2937;
-    --line:#E3DCC8;
-    --green:#3F7D52;
+    --teal:#046A45;
+    --teal-dark:#0A1410;
+    --paper:#F4F1E8;
+    --mustard:#D4AF37;
+    --mustard-dark:#B8941F;
+    --rust:#C0392B;
+    --ink:#1A1F1C;
+    --line:#DCD5C4;
+    --green:#0E8F5F;
   }
   *{box-sizing:border-box;}
   body{
@@ -45,7 +45,7 @@
     padding:20px 16px 46px;
     position:relative;
     overflow:hidden;
-    box-shadow:0 4px 20px rgba(6,40,39,0.25);
+    box-shadow:0 4px 24px rgba(0,0,0,0.35);
   }
   header::after{
     content:"";
@@ -115,12 +115,15 @@
     grid-template-columns:repeat(4, 1fr);
     gap:5px;
     margin:-30px 12px 0;
-    background:var(--teal-dark);
-    border-radius:16px;
+    background:rgba(10,20,16,0.65);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(212,175,55,0.18);
+    border-radius:18px;
     padding:6px;
     position:relative;
     z-index:2;
-    box-shadow:0 8px 24px rgba(6,40,39,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    box-shadow:0 8px 28px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
   }
   .tabbar button{
     white-space:nowrap;
@@ -137,9 +140,9 @@
     transition:background 0.2s ease, color 0.2s ease, transform 0.1s ease;
   }
   .tabbar button.active{
-    background:var(--mustard);
+    background:linear-gradient(135deg, var(--mustard), var(--mustard-dark));
     color:var(--teal-dark);
-    box-shadow:0 2px 8px rgba(0,0,0,0.2);
+    box-shadow:0 3px 12px rgba(212,175,55,0.4);
   }
   .tabbar button:active{transform:scale(0.96);}
 
@@ -158,13 +161,37 @@
     background:#fff;
     border:1px solid var(--line);
     border-top:2.5px solid var(--mustard);
-    border-radius:16px;
+    border-radius:20px;
     padding:14px 8px 16px;
     text-align:center;
     box-shadow:0 2px 10px rgba(31,41,55,0.05);
     transition:transform 0.15s ease;
   }
   .stat-icon{font-size:18px;margin-bottom:4px;opacity:0.85;}
+
+  .fab{
+    position:fixed;
+    right:20px;
+    bottom:28px;
+    width:58px;height:58px;
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--mustard), var(--mustard-dark));
+    color:var(--teal-dark);
+    border:none;
+    font-size:28px;
+    font-weight:800;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 8px 24px rgba(212,175,55,0.5), 0 2px 8px rgba(0,0,0,0.3);
+    z-index:40;
+    cursor:pointer;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+    animation:fabPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .fab:active{transform:scale(0.9);}
+  @keyframes fabPop{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
   .stat .num{font-size:26px;font-weight:800;color:var(--teal);letter-spacing:-0.5px;}
   .stat .label{font-size:10.5px;color:#6b6355;margin-top:4px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;}
 
@@ -212,7 +239,8 @@
   }
   .btn-primary{background:var(--mustard);color:var(--teal-dark);box-shadow:0 3px 10px rgba(232,169,61,0.35);}
   .btn-primary:active{background:var(--mustard-dark);transform:scale(0.97);}
-  .btn-outline{background:#fff;color:var(--teal);border:1.5px solid var(--teal);}
+  .btn-outline{background:#fff;color:var(--teal);border:1.5px solid var(--teal);transition:border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;}
+  .btn-outline:hover{border-color:var(--mustard);}
   .btn-outline:active{background:var(--paper);transform:scale(0.97);}
   .btn-danger{background:var(--rust);color:#fff;box-shadow:0 3px 10px rgba(178,58,46,0.3);}
   .btn-danger:active{transform:scale(0.97);}
@@ -224,7 +252,7 @@
   .bike-card{
     background:#fff;
     border:1px solid var(--line);
-    border-radius:18px;
+    border-radius:22px;
     padding:14px;
     margin-bottom:12px;
     display:flex;
@@ -232,8 +260,10 @@
     align-items:center;
     gap:10px;
     box-shadow:0 2px 12px rgba(31,41,55,0.06);
-    transition:box-shadow 0.15s ease, transform 0.15s ease;
+    transition:box-shadow 0.2s ease, transform 0.2s ease;
+    animation:cardIn 0.3s ease;
   }
+  @keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
   .bike-card:active{transform:scale(0.99);}
   .bike-left{display:flex;align-items:center;gap:12px;min-width:0;}
   .bike-icon{
@@ -280,7 +310,7 @@
     font-size:14px;
     background:#fff;
     border:1px dashed var(--line);
-    border-radius:16px;
+    border-radius:20px;
   }
   .empty .big{font-size:40px;display:block;margin-bottom:8px;animation:emptyFloat 2.4s ease-in-out infinite;}
   @keyframes emptyFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
@@ -296,13 +326,16 @@
   }
   @keyframes overlayIn{from{opacity:0;}to{opacity:1;}}
   .modal{
-    background:var(--paper);
+    background:rgba(244,241,232,0.92);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border-top:2px solid var(--mustard);
     width:100%;max-width:480px;
-    border-radius:22px 22px 0 0;
+    border-radius:24px 24px 0 0;
     padding:22px 18px 26px;
     max-height:85dvh;
     overflow-y:auto;
-    box-shadow:0 -8px 30px rgba(6,40,39,0.3);
+    box-shadow:0 -10px 40px rgba(0,0,0,0.45);
     animation:modalUp 0.25s cubic-bezier(0.2,0.8,0.3,1);
   }
   @keyframes modalUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
@@ -348,7 +381,7 @@
   .summary-card{
     background:linear-gradient(135deg, var(--teal), var(--teal-dark));
     color:var(--paper);
-    border-radius:18px;
+    border-radius:22px;
     padding:18px 20px;
     margin-bottom:16px;
     box-shadow:0 6px 18px rgba(6,40,39,0.25);
@@ -397,7 +430,7 @@
   .alert-card{
     background:#FCEEE9;
     border:1.5px solid #EFC3B7;
-    border-radius:16px;
+    border-radius:20px;
     padding:14px;
     margin-bottom:12px;
   }
@@ -638,6 +671,9 @@
   </section>
 
 </main>
+
+<!-- FLOATING ACTION BUTTON (context-aware quick add) -->
+<button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
   <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V3</div>
@@ -1170,6 +1206,28 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
 });
 
 // menu overlay (Bikes, Expenses, Maintenance, Customers, Backup)
+// ---- Floating Action Button: context-aware quick add ----
+function getActiveTabName(){
+  const activeBtn = document.querySelector('.tab-btn.active');
+  if(activeBtn && activeBtn.dataset.tab) return activeBtn.dataset.tab;
+  // check which section is visible (covers Menu-opened tabs)
+  const sections = ['bikes','rentals','expenses','maintenance','customers','backup','reports','dashboard'];
+  for(const s of sections){
+    const el = document.getElementById('tab-'+s);
+    if(el && !el.classList.contains('hide')) return s;
+  }
+  return 'dashboard';
+}
+function handleFabClick(){
+  const tab = getActiveTabName();
+  if(tab === 'bikes') openModal();
+  else if(tab === 'rentals') openRentModal();
+  else if(tab === 'expenses') openExpenseModal();
+  else if(tab === 'maintenance') openMaintModal();
+  else if(tab === 'dashboard' || tab === 'reports') openRentModal();
+  else openRentModal();
+}
+
 function openMenuOverlay(){
   document.getElementById('menuOverlay').classList.remove('hide');
 }
