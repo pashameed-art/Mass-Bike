@@ -1260,12 +1260,15 @@ function statusClass(s){
 }
 
 function netRentalIncome(r){
-  return (r.totalAmount||0) + (r.fine||0) - (r.discount||0);
+  return roundMoney((r.totalAmount||0) + (r.fine||0) - (r.discount||0));
 }
 
 function totalPaidSoFar(r){
   const paymentsSum = (r.payments||[]).reduce((s,p)=>s+(p.amount||0), 0);
-  return (r.advance||0) + paymentsSum;
+  return roundMoney((r.advance||0) + paymentsSum);
+}
+function roundMoney(n){
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 function render(){
@@ -1289,7 +1292,7 @@ function render(){
         ${longPending.map(r=>{
           const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
           const bike = bikesForPlate.find(b=>b.id===r.bikeId);
-          const balanceDue = days * (r.rate||0) - totalPaidSoFar(r);
+          const balanceDue = roundMoney(days * (r.rate||0) - totalPaidSoFar(r));
           return `<div class="summary-row" style="border-bottom:1px solid #EFC3B7;align-items:flex-start;">
             <span>${escapeHTML(r.customerName)} · ${escapeHTML(bike?bike.plate:'-')}<br>
               <span style="font-size:11px;color:#8a8272;font-weight:400;">Rent Date: ${formatDMY(r.startDate)} · ${days} days</span><br>
@@ -1944,7 +1947,7 @@ function updateReturnCalc(rental){
   const received = parseFloat(document.getElementById('retReceived').value) || 0;
   const fine = parseFloat(document.getElementById('retFine').value) || 0;
   const advance = totalPaidSoFar(rental);
-  const balance = totalAmount + fine - discount - advance - received;
+  const balance = roundMoney(totalAmount + fine - discount - advance - received);
   document.getElementById('retBalance').value = '₹' + balance;
 }
 function closeReturnModal(){
@@ -1968,7 +1971,7 @@ function saveReturnEntry(){
     return;
   }
 
-  const balance = totalAmount + fine - discount - totalPaidSoFar(rental) - received;
+  const balance = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
 
   const updatedRentals = rentals.map(r =>
     r.id === rentalId ? {...r, status:'returned', returnDate, endKM, totalAmount, discount, fine, received, balance} : r
@@ -2193,7 +2196,7 @@ function editReturnedRental(rentalId){
     const fine = parseFloat(document.getElementById('editRetFine').value) || 0;
     const discount = parseFloat(document.getElementById('editRetDiscount').value) || 0;
     const received = parseFloat(document.getElementById('editRetReceived').value) || 0;
-    const balance = total + fine - discount - (r.advance||0) - received;
+    const balance = roundMoney(total + fine - discount - (r.advance||0) - received);
     document.getElementById('editRetBalance').value = '₹' + balance;
   };
   ['editRetAmount','editRetFine','editRetDiscount','editRetReceived'].forEach(id=>{
@@ -2216,7 +2219,7 @@ function saveEditReturnedRental(){
   const rentals = loadRentals();
   const rental = rentals.find(r=>r.id===id);
   if(!rental) return;
-  const balance = totalAmount + fine - discount - (rental.advance||0) - received;
+  const balance = roundMoney(totalAmount + fine - discount - (rental.advance||0) - received);
 
   const updated = rentals.map(r => r.id === id ? {...r, totalAmount, fine, discount, received, balance} : r);
   saveRentals(updated);
@@ -2235,13 +2238,13 @@ function openReceipt(rentalId){
   const isActive = r.status === 'active';
   const returnDate = isActive ? todayStr() : r.returnDate;
   const days = calcDays(r.startDate, returnDate);
-  const total = isActive ? days * (r.rate||0) : (r.totalAmount||0);
+  const total = isActive ? roundMoney(days * (r.rate||0)) : (r.totalAmount||0);
   const advance = totalPaidSoFar(r);
   const discount = r.discount || 0;
   const fine = r.fine || 0;
   const received = r.received || 0;
   const paid = advance + received;
-  const balance = isActive ? (total - advance) : (r.balance!=null ? r.balance : (total + fine - discount - advance));
+  const balance = roundMoney(isActive ? (total - advance) : (r.balance!=null ? r.balance : (total + fine - discount - advance)));
 
   document.getElementById('receiptContent').innerHTML = `
     <div style="font-weight:800;color:var(--teal);font-size:16px;margin-bottom:2px;">MASS BIKE</div>
@@ -2278,13 +2281,13 @@ function downloadReceiptPDF(){
   const isActive = r.status === 'active';
   const returnDate = isActive ? todayStr() : r.returnDate;
   const days = calcDays(r.startDate, returnDate);
-  const total = isActive ? days * (r.rate||0) : (r.totalAmount||0);
+  const total = isActive ? roundMoney(days * (r.rate||0)) : (r.totalAmount||0);
   const advance = totalPaidSoFar(r);
   const discount = r.discount || 0;
   const fine = r.fine || 0;
   const received = r.received || 0;
   const paid = advance + received;
-  const balance = isActive ? (total - advance) : (r.balance!=null ? r.balance : (total + fine - discount - advance));
+  const balance = roundMoney(isActive ? (total - advance) : (r.balance!=null ? r.balance : (total + fine - discount - advance)));
 
   const lines = [
     {text:'MASS BIKE', bold:true, size:18, gap:22},
@@ -2313,13 +2316,13 @@ function shareReceiptWhatsApp(){
   const isActive = r.status === 'active';
   const returnDate = isActive ? todayStr() : r.returnDate;
   const days = calcDays(r.startDate, returnDate);
-  const total = isActive ? days * (r.rate||0) : (r.totalAmount||0);
+  const total = isActive ? roundMoney(days * (r.rate||0)) : (r.totalAmount||0);
   const advance = totalPaidSoFar(r);
   const discount = r.discount || 0;
   const fine = r.fine || 0;
   const received = r.received || 0;
   const paid = advance + received;
-  const balance = isActive ? (total - advance) : (r.balance!=null ? r.balance : (total + fine - discount - advance));
+  const balance = roundMoney(isActive ? (total - advance) : (r.balance!=null ? r.balance : (total + fine - discount - advance)));
 
   let text = `*MASS BIKE - Rental Receipt*\n`;
   text += `Invoice No: ${getInvoiceNumber(r)}\n`;
@@ -2664,7 +2667,7 @@ function sendWhatsAppReminder(rentalId){
 
   if(r.status === 'active'){
     const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
-    const owed = Math.max(0, (days * (r.rate||0)) - totalPaidSoFar(r));
+    const owed = roundMoney(Math.max(0, (days * (r.rate||0)) - totalPaidSoFar(r)));
     text += `Your rental of ${r.bikeName}${bike ? ' ('+bike.plate+')' : ''} has been running for ${days} days since ${formatDMY(r.startDate)}.\n`;
     if(owed > 0) text += `Pending amount so far: ₹${owed}.\n`;
     text += `Please return the bike or contact us. Thank you!`;
