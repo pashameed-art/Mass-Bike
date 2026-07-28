@@ -504,15 +504,11 @@
 
   <!-- DASHBOARD -->
   <section id="tab-dashboard">
-    <div class="stats">
-      <div class="stat"><div class="stat-icon">🏍️</div><div class="num" id="statTotal">0</div><div class="label">Total Bikes</div></div>
-      <div class="stat"><div class="stat-icon">✅</div><div class="num" id="statAvail">0</div><div class="label">Available</div></div>
-      <div class="stat"><div class="stat-icon">🔑</div><div class="num" id="statRented">0</div><div class="label">Rented Out</div></div>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="stat-icon">☀️</div><div class="num" id="statTodayIncome" style="font-size:20px;">₹0</div><div class="label">Today's Income</div></div>
-      <div class="stat"><div class="stat-icon">📅</div><div class="num" id="statMonthIncome" style="font-size:20px;">₹0</div><div class="label">This Month</div></div>
-      <div class="stat"><div class="stat-icon">👥</div><div class="num" id="statCustomers">0</div><div class="label">Customers</div></div>
+    <div class="stats" style="grid-template-columns:repeat(4, 1fr);gap:8px;">
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">🏍️</div><div class="num" id="statTotal" style="font-size:20px;">0</div><div class="label" style="font-size:9px;">Total Bikes</div></div>
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">✅</div><div class="num" id="statAvail" style="font-size:20px;">0</div><div class="label" style="font-size:9px;">Available</div></div>
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">☀️</div><div class="num" id="statTodayIncome" style="font-size:16px;">₹0</div><div class="label" style="font-size:9px;">Today's Income</div></div>
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">📅</div><div class="num" id="statMonthIncome" style="font-size:16px;">₹0</div><div class="label" style="font-size:9px;">This Month</div></div>
     </div>
     <div class="summary-card" style="margin-bottom:16px;">
       <div class="summary-row"><span>Total Income (All Time)</span><span class="amt amt-pos" id="dashIncome">₹0</span></div>
@@ -769,6 +765,46 @@
     <div id="dueReminderContent"></div>
     <div class="modal-actions">
       <button class="btn btn-primary btn-block" onclick="closeDueReminder()">OK, Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT ACTIVE RENTAL MODAL -->
+<div class="overlay hide" id="editActiveModalOverlay">
+  <div class="modal">
+    <h3>Edit Active Rental</h3>
+    <input type="hidden" id="editActiveId">
+    <div class="field">
+      <label>Bike</label>
+      <select id="editActiveBike"></select>
+    </div>
+    <div class="field">
+      <label>Customer Name</label>
+      <input type="text" id="editActiveCustomer">
+    </div>
+    <div class="field">
+      <label>Customer Phone</label>
+      <input type="tel" id="editActivePhone" maxlength="10" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Start Date</label>
+      <input type="date" id="editActiveStartDate">
+    </div>
+    <div class="field">
+      <label>Start KM</label>
+      <input type="number" id="editActiveStartKM">
+    </div>
+    <div class="field">
+      <label>Daily Rate (₹)</label>
+      <input type="number" id="editActiveRate">
+    </div>
+    <div class="field">
+      <label>Advance (₹)</label>
+      <input type="number" id="editActiveAdvance">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeEditActiveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditActiveRental()">Save</button>
     </div>
   </div>
 </div>
@@ -1277,7 +1313,6 @@ function render(){
   // dashboard stats
   document.getElementById('statTotal').textContent = bikes.length;
   document.getElementById('statAvail').textContent = bikes.filter(b=>b.status==='available').length;
-  document.getElementById('statRented').textContent = bikes.filter(b=>b.status==='rented').length;
 
   // long pending rentals (30+ days, unreturned)
   const activeRentals = loadRentals().filter(r=>r.status==='active');
@@ -1383,11 +1418,6 @@ function render(){
   const monthIncome = history.filter(r=>(r.returnDate||'').slice(0,7)===thisMonthPrefix).reduce((s,r)=>s+netRentalIncome(r),0);
   document.getElementById('statTodayIncome').textContent = '₹'+todayIncome;
   document.getElementById('statMonthIncome').textContent = '₹'+monthIncome;
-
-  // total unique customers
-  const allRentalsForCustomers = loadRentals();
-  const uniqueCustomers = new Set(allRentalsForCustomers.map(r => (r.customerName||'').trim().toLowerCase() + '|' + (r.customerPhone||'').replace(/\D/g,'')));
-  document.getElementById('statCustomers').textContent = uniqueCustomers.size;
 
   // returned bikes with pending balance (customer took the bike back but hasn't fully paid)
   const returnedPending = history.filter(r => (r.balance||0) > 0).sort((a,b)=> b.balance - a.balance);
@@ -1569,12 +1599,14 @@ function monthLabel(ym){
 }
 
 function expenseCardHTML(e){
+  const expBike = e.bikeId ? loadBikes().find(b=>b.id===e.bikeId) : null;
+  const expBikeLabel = e.bikeName ? (e.bikeName + (expBike ? ' ('+expBike.plate+')' : '')) : '';
   return `
   <div class="bike-card">
     <div class="bike-left">
       <div class="bike-icon">💸</div>
       <div class="bike-info">
-        <div class="name">${escapeHTML(e.category)}${e.bikeName ? ' · '+escapeHTML(e.bikeName) : ''}</div>
+        <div class="name">${escapeHTML(e.category)}${expBikeLabel ? ' · '+escapeHTML(expBikeLabel) : ''}</div>
         <div class="meta">${e.date} ${e.note ? '· '+escapeHTML(e.note) : ''}</div>
       </div>
     </div>
@@ -1603,7 +1635,7 @@ function maintCardHTML(m){
     <div class="bike-left">
       <div class="bike-icon">🛠️</div>
       <div class="bike-info">
-        <div class="name">${escapeHTML(m.bikeName)} · ${escapeHTML(m.type)}</div>
+        <div class="name">${escapeHTML(m.bikeName)}${bike ? ' ('+escapeHTML(bike.plate)+')' : ''} · ${escapeHTML(m.type)}</div>
         <div class="meta">Done: ${formatDMY(m.date)} ${m.nextDue ? dueStatus(m.nextDue) : ''}
           ${m.nextDueKM ? `<br>Next Due KM: ${escapeHTML(m.nextDueKM)} ${kmOverdue ? '<span class="due-tag due-over">KM Overdue</span>' : (kmDueSoon ? '<span class="due-tag due-soon">KM Due Soon</span>' : '')}` : ''}
         </div>
@@ -1645,12 +1677,14 @@ function rentalCardHTML(r){
     ? (parseFloat(r.endKM) - parseFloat(r.startKM)) : null;
   const profit = !isActive ? netRentalIncome(r) : null;
   const paymentsTotal = totalPaidSoFar(r);
+  const cardBike = loadBikes().find(b=>b.id===r.bikeId);
+  const bikeLabel = r.bikeName + (cardBike ? ' ('+cardBike.plate+')' : '');
   return `
   <div class="bike-card">
     <div class="bike-left">
       <div class="bike-icon">${isActive ? '🔑' : '✅'}</div>
       <div class="bike-info">
-        <div class="name">${escapeHTML(r.bikeName)} · ${escapeHTML(r.customerName)}</div>
+        <div class="name">${escapeHTML(bikeLabel)} · ${escapeHTML(r.customerName)}</div>
         <div class="plate-no">${escapeHTML(r.customerPhone || '-')}${!isActive ? ' · '+escapeHTML(getInvoiceNumber(r)) : ''}</div>
         <div class="meta">
           ${formatDMY(r.startDate)} ${isActive ? '' : '→ '+formatDMY(r.returnDate)}
@@ -1665,6 +1699,7 @@ function rentalCardHTML(r){
     <div class="bike-actions">
       ${isActive
         ? `<button class="btn btn-primary btn-sm" onclick="openReturnModal(${r.id})">Return</button>
+           <button class="btn btn-outline btn-sm" onclick="editActiveRental(${r.id})">✏️ Edit</button>
            <button class="btn btn-outline btn-sm" onclick="openAddPaymentModal(${r.id})">💰 Payment</button>
            <button class="btn btn-outline btn-sm" onclick="sendWhatsAppReminder(${r.id})">📲 Remind</button>
            <button class="btn btn-outline btn-sm" onclick="callCustomer(${r.id})">📞 Call</button>`
@@ -2007,7 +2042,7 @@ function openExpenseModal(){
   const bikes = loadBikes();
   const sel = document.getElementById('eBike');
   sel.innerHTML = '<option value="">— General —</option>' +
-    bikes.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+    bikes.map(b=>`<option value="${b.id}">${escapeHTML(b.name)} (${escapeHTML(b.plate)})</option>`).join('');
   document.getElementById('eCategory').value = 'Fuel';
   document.getElementById('eAmount').value = '';
   document.getElementById('eDate').value = todayStr();
@@ -2022,7 +2057,7 @@ function editExpense(id){
   const bikes = loadBikes();
   const sel = document.getElementById('eBike');
   sel.innerHTML = '<option value="">— General —</option>' +
-    bikes.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+    bikes.map(b=>`<option value="${b.id}">${escapeHTML(b.name)} (${escapeHTML(b.plate)})</option>`).join('');
   sel.value = e.bikeId || '';
   document.getElementById('eCategory').value = e.category;
   document.getElementById('eAmount').value = e.amount;
@@ -2181,6 +2216,81 @@ function getInvoiceNumber(rentalOrId){
 }
 
 // ---- EDIT COMPLETED RENTAL RECORD ----
+// ---- EDIT ACTIVE (IN-PROGRESS) RENTAL — fix mistakes like wrong bike selected ----
+function editActiveRental(rentalId){
+  const r = loadRentals().find(x=>x.id===rentalId);
+  if(!r) return;
+  document.getElementById('editActiveId').value = r.id;
+
+  // bike dropdown: current bike + all bikes that are available (so it's not stuck rented elsewhere)
+  const allBikes = loadBikes();
+  const selectableBikes = allBikes.filter(b => b.id === r.bikeId || b.status === 'available');
+  const sel = document.getElementById('editActiveBike');
+  sel.innerHTML = selectableBikes.map(b=>`<option value="${b.id}" ${b.id===r.bikeId?'selected':''}>${escapeHTML(b.name)} (${escapeHTML(b.plate)})</option>`).join('');
+
+  document.getElementById('editActiveCustomer').value = r.customerName;
+  document.getElementById('editActivePhone').value = r.customerPhone || '';
+  document.getElementById('editActiveStartDate').value = r.startDate;
+  document.getElementById('editActiveStartKM').value = r.startKM || '';
+  document.getElementById('editActiveRate').value = r.rate || '';
+  document.getElementById('editActiveAdvance').value = r.advance || '';
+
+  document.getElementById('editActiveModalOverlay').classList.remove('hide');
+}
+function closeEditActiveModal(){
+  document.getElementById('editActiveModalOverlay').classList.add('hide');
+}
+function saveEditActiveRental(){
+  const rentalId = parseInt(document.getElementById('editActiveId').value);
+  const newBikeId = parseInt(document.getElementById('editActiveBike').value);
+  const customerName = document.getElementById('editActiveCustomer').value.trim();
+  const customerPhone = document.getElementById('editActivePhone').value.trim();
+  const startDate = document.getElementById('editActiveStartDate').value;
+  const startKM = document.getElementById('editActiveStartKM').value.trim();
+  const rate = parseFloat(document.getElementById('editActiveRate').value) || 0;
+  const advance = parseFloat(document.getElementById('editActiveAdvance').value) || 0;
+
+  if(!customerName){ alert('Customer name is required'); return; }
+  const phoneDigits = customerPhone.replace(/\D/g,'');
+  if(!phoneDigits || phoneDigits.length !== 10){
+    alert('சரியான 10 digit Phone Number கொடுக்கவும் / Please enter a valid 10-digit phone number');
+    return;
+  }
+
+  const rentals = loadRentals();
+  const rental = rentals.find(r=>r.id===rentalId);
+  if(!rental) return;
+
+  const bikes = loadBikes();
+  const newBike = bikes.find(b=>b.id===newBikeId);
+  if(!newBike){ alert('Please select a bike'); return; }
+
+  const bikeChanged = newBikeId !== rental.bikeId;
+
+  // if the bike was changed: free up the old bike, mark the new one as rented
+  let updatedBikes = bikes;
+  if(bikeChanged){
+    updatedBikes = bikes.map(b=>{
+      if(b.id === rental.bikeId) return {...b, status:'available'};
+      if(b.id === newBikeId) return {...b, status:'rented'};
+      return b;
+    });
+    saveBikes(updatedBikes);
+  }
+
+  const updatedRentals = rentals.map(r => r.id === rentalId
+    ? {...r, bikeId: newBikeId, bikeName: newBike.name, customerName, customerPhone, startDate, startKM, rate, advance}
+    : r
+  );
+  saveRentals(updatedRentals);
+
+  closeEditActiveModal();
+  render();
+}
+document.getElementById('editActiveModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'editActiveModalOverlay') closeEditActiveModal();
+});
+
 function editReturnedRental(rentalId){
   const r = loadRentals().find(x=>x.id===rentalId);
   if(!r) return;
