@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mass Bike">
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
@@ -624,6 +626,23 @@
       <div class="summary-row"><span>Maintenance Records</span><span class="amt" id="bkMaint">0</span></div>
     </div>
 
+    <div class="section-title">☁️ Google Drive</div>
+    <div class="empty" style="background:#fff;border-style:solid;" id="driveConnectBox">
+      <span class="big">☁️</span>
+      Google Drive connect பண்ணி, ஒரு tap-லேயே Backup / Restore பண்ணலாம்.
+      <div style="margin-top:14px;">
+        <button class="btn btn-primary btn-block" id="driveConnectBtn" onclick="connectGoogleDrive()">🔗 Connect Google Drive</button>
+      </div>
+    </div>
+    <div class="empty hide" style="background:#fff;border-style:solid;" id="driveActionsBox">
+      <span class="big">✅</span>
+      <span id="driveStatusText">Google Drive Connected</span>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-primary btn-block" onclick="backupToDriveNow()">☁️⬆️ Backup Now to Drive</button>
+        <button class="btn btn-outline btn-block" onclick="restoreFromDriveNow()">☁️⬇️ Restore from Drive</button>
+      </div>
+    </div>
+
     <div class="section-title">Backup Data</div>
     <div class="empty" style="background:#fff;border-style:solid;">
       <span class="big">⬇️</span>
@@ -733,7 +752,7 @@
     </div>
     <div class="field">
       <label>Customer Phone</label>
-      <input type="tel" id="rPhone" placeholder="e.g. 9876543210" maxlength="10" inputmode="numeric">
+      <input type="tel" id="rPhone" placeholder="e.g. 9876543210" maxlength="14" inputmode="numeric">
     </div>
     <div class="field">
       <label>Start Date</label>
@@ -1075,6 +1094,13 @@ function saveRentals(rentals){
 function todayStr(){
   return new Date().toISOString().slice(0,10);
 }
+function normalizePhone(input){
+  let digits = (input||'').replace(/\D/g,'');
+  if(digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if(digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return digits;
+}
+
 function formatDMY(iso){
   if(!iso) return '-';
   const [y,m,d] = iso.split('-');
@@ -1925,7 +1951,7 @@ function saveRentEntry(){
 
   if(!bike){ alert('Please select a bike'); return; }
   if(!customerName){ alert('Customer name is required'); return; }
-  const phoneDigits = customerPhone.replace(/\D/g,'');
+  const phoneDigits = normalizePhone(customerPhone);
   if(!phoneDigits || phoneDigits.length !== 10){
     alert('சரியான 10 digit Phone Number கொடுக்கவும் / Please enter a valid 10-digit phone number');
     return;
@@ -1937,7 +1963,7 @@ function saveRentEntry(){
     invoiceNo: getNextInvoiceNo(),
     bikeId: bike.id,
     bikeName: bike.name,
-    customerName, customerPhone,
+    customerName, customerPhone: phoneDigits,
     startDate, startKM, rate, advance,
     status: 'active'
   });
@@ -2257,7 +2283,7 @@ function saveEditActiveRental(){
   const advance = parseFloat(document.getElementById('editActiveAdvance').value) || 0;
 
   if(!customerName){ alert('Customer name is required'); return; }
-  const phoneDigits = customerPhone.replace(/\D/g,'');
+  const phoneDigits = normalizePhone(customerPhone);
   if(!phoneDigits || phoneDigits.length !== 10){
     alert('சரியான 10 digit Phone Number கொடுக்கவும் / Please enter a valid 10-digit phone number');
     return;
@@ -2285,7 +2311,7 @@ function saveEditActiveRental(){
   }
 
   const updatedRentals = rentals.map(r => r.id === rentalId
-    ? {...r, bikeId: newBikeId, bikeName: newBike.name, customerName, customerPhone, startDate, startKM, rate, advance}
+    ? {...r, bikeId: newBikeId, bikeName: newBike.name, customerName, customerPhone: phoneDigits, startDate, startKM, rate, advance}
     : r
   );
   saveRentals(updatedRentals);
@@ -2620,6 +2646,142 @@ function exportCSV(type){
   }
 
   downloadCSVFile(filename, rowsToCSV(headers, rows));
+}
+
+// ---- GOOGLE DRIVE BACKUP / RESTORE ----
+const GOOGLE_CLIENT_ID = '123737120474-8sqc1sb4p0i9j7s9nq56j4gkd784lm1n.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_BACKUP_FILENAME = 'mass-bike-latest-backup.json';
+let gapiInited = false;
+let gisInited = false;
+let driveTokenClient = null;
+
+function gapiLoaded(){
+  gapi.load('client', async ()=>{
+    await gapi.client.init({});
+    await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+    gapiInited = true;
+  });
+}
+function gisLoaded(){
+  driveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: '' // set per-request
+  });
+  gisInited = true;
+  // if a token was saved this session, nothing to restore (Google tokens aren't persisted across reloads for security)
+}
+
+function connectGoogleDrive(){
+  if(!gapiInited || !gisInited){
+    alert('Google services இன்னும் load ஆகல, சில நொடி wait பண்ணி மறுபடியும் try பண்ணுங்க. / Google services still loading, please wait a moment and try again.');
+    return;
+  }
+  driveTokenClient.callback = (resp)=>{
+    if(resp.error){
+      alert('Google Drive connect ஆகல்: ' + resp.error);
+      return;
+    }
+    gapi.client.setToken({access_token: resp.access_token});
+    document.getElementById('driveConnectBox').classList.add('hide');
+    document.getElementById('driveActionsBox').classList.remove('hide');
+  };
+  driveTokenClient.requestAccessToken({prompt: gapi.client.getToken() ? '' : 'consent'});
+}
+
+function buildDriveBackupPayload(){
+  const bikesData = loadBikes();
+  const rentalsData = loadRentals();
+  const expensesData = loadExpenses();
+  const maintenanceData = loadMaintList();
+  const payload = { bikes: bikesData, rentals: rentalsData, expenses: expensesData, maintenance: maintenanceData };
+  return {
+    exportedAt: new Date().toISOString(),
+    app: 'MASS BIKE',
+    version: APP_VERSION,
+    recordCounts: {
+      bikes: bikesData.length, rentals: rentalsData.length,
+      expenses: expensesData.length, maintenance: maintenanceData.length
+    },
+    checksum: simpleChecksum(JSON.stringify(payload)),
+    ...payload
+  };
+}
+
+async function backupToDriveNow(){
+  if(!gapi.client.getToken()){ alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
+  try{
+    const fileContent = JSON.stringify(buildDriveBackupPayload(), null, 2);
+    const searchRes = await gapi.client.drive.files.list({
+      q: `name='${DRIVE_BACKUP_FILENAME}' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+    const existing = searchRes.result.files && searchRes.result.files[0];
+    const boundary = 'massbike_boundary_314159';
+    const delimiter = "\r\n--" + boundary + "\r\n";
+    const closeDelim = "\r\n--" + boundary + "--";
+    const metadata = {name: DRIVE_BACKUP_FILENAME, mimeType: 'application/json'};
+    const multipartBody =
+      delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
+      delimiter + 'Content-Type: application/json\r\n\r\n' + fileContent +
+      closeDelim;
+
+    const path = existing ? `/upload/drive/v3/files/${existing.id}` : '/upload/drive/v3/files';
+    const method = existing ? 'PATCH' : 'POST';
+
+    await gapi.client.request({
+      path, method,
+      params: {uploadType: 'multipart'},
+      headers: {'Content-Type': `multipart/related; boundary="${boundary}"`},
+      body: multipartBody
+    });
+    alert('✅ Google Drive-க்கு Backup ஆயிடுச்சு! / Backed up to Google Drive successfully!');
+  }catch(err){
+    alert('Backup ஆகல்: ' + (err.result ? err.result.error.message : err.message));
+  }
+}
+
+async function restoreFromDriveNow(){
+  if(!gapi.client.getToken()){ alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
+  try{
+    const searchRes = await gapi.client.drive.files.list({
+      q: `name='${DRIVE_BACKUP_FILENAME}' and trashed=false`,
+      fields: 'files(id, name, modifiedTime)'
+    });
+    const file = searchRes.result.files && searchRes.result.files[0];
+    if(!file){
+      alert('Google Drive-ல் backup file கிடைக்கல். முதலில் "Backup Now to Drive" பண்ணுங்க.');
+      return;
+    }
+    const contentRes = await gapi.client.drive.files.get({fileId: file.id, alt: 'media'});
+    const data = typeof contentRes.result === 'object' ? contentRes.result : JSON.parse(contentRes.body);
+
+    if(!data.bikes || !Array.isArray(data.bikes)){
+      alert('Drive-ல் இருக்கிற file valid backup இல்ல.');
+      return;
+    }
+
+    let integrityWarning = '';
+    if(data.checksum){
+      const payload = {bikes: data.bikes||[], rentals: data.rentals||[], expenses: data.expenses||[], maintenance: data.maintenance||[]};
+      if(simpleChecksum(JSON.stringify(payload)) !== data.checksum){
+        integrityWarning = '\n\n⚠️ CHECKSUM MISMATCH — file corrupt ஆகி இருக்கலாம்!';
+      }
+    }
+
+    if(!confirm(`Drive Backup (${formatDMY((data.exportedAt||'').slice(0,10))})\nRecords: ${(data.bikes||[]).length} bikes, ${(data.rentals||[]).length} rentals${integrityWarning}\n\nஇது தற்போதைய data-ஐ மாற்றிவிடும். தொடரவா?`)) return;
+
+    saveBikes(data.bikes || []);
+    saveRentals(data.rentals || []);
+    saveExpenses(data.expenses || []);
+    saveMaintList(data.maintenance || []);
+    (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r.invoiceNo));
+    alert('✅ Google Drive-லேர்ந்து Restore ஆயிடுச்சு!');
+    render();
+  }catch(err){
+    alert('Restore ஆகல்: ' + (err.result ? err.result.error.message : err.message));
+  }
 }
 
 function downloadBackup(){
