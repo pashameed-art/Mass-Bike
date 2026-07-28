@@ -8,8 +8,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mass Bike">
-<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
@@ -2675,7 +2673,18 @@ function gisLoaded(){
 
 function connectGoogleDrive(){
   if(!gapiInited || !gisInited){
-    alert('Google services இன்னும் load ஆகல, சில நொடி wait பண்ணி மறுபடியும் try பண்ணுங்க. / Google services still loading, please wait a moment and try again.');
+    // wait up to 5 seconds for the Google scripts to finish initializing, then retry once
+    let waited = 0;
+    const waitInterval = setInterval(()=>{
+      waited += 300;
+      if(gapiInited && gisInited){
+        clearInterval(waitInterval);
+        connectGoogleDrive();
+      } else if(waited >= 5000){
+        clearInterval(waitInterval);
+        alert('Google services load ஆகல. Internet connection சரியா இருக்கானு பாருங்க, page-ஐ refresh பண்ணி மறுபடியும் try பண்ணுங்க. / Google services failed to load. Check your internet connection and refresh the page.');
+      }
+    }, 300);
     return;
   }
   driveTokenClient.callback = (resp)=>{
@@ -3013,5 +3022,9 @@ document.addEventListener('focusin', (e)=>{
   }
 });
 </script>
+
+<!-- loaded after gapiLoaded/gisLoaded are defined above, so onload handlers work correctly -->
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
