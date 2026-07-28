@@ -1465,12 +1465,18 @@ function render(){
   document.getElementById('repFilterLabel').textContent = filterLabels[reportFilter.type] || 'All Time';
 
   const byBike = {};
-  filteredHistory.forEach(r=>{ byBike[r.bikeName] = (byBike[r.bikeName]||0) + netRentalIncome(r); });
-  const bikeRows = Object.entries(byBike);
+  filteredHistory.forEach(r=>{
+    const key = r.bikeId || r.bikeName;
+    if(!byBike[key]) byBike[key] = {name: r.bikeName, bikeId: r.bikeId, amt: 0};
+    byBike[key].amt += netRentalIncome(r);
+  });
+  const bikeRows = Object.values(byBike);
   document.getElementById('repBikeList').innerHTML = bikeRows.length
-    ? `<div class="summary-card">` + bikeRows.map(([name,amt])=>
-        `<div class="summary-row"><span>${escapeHTML(name)}</span><span class="amt amt-pos">₹${amt}</span></div>`
-      ).join('') + `</div>`
+    ? `<div class="summary-card">` + bikeRows.map(row=>{
+        const b = bikes.find(x=>x.id===row.bikeId);
+        const label = row.name + (b ? ' ('+b.plate+')' : '');
+        return `<div class="summary-row"><span>${escapeHTML(label)}</span><span class="amt amt-pos">₹${row.amt}</span></div>`;
+      }).join('') + `</div>`
     : `<div class="empty"><span class="big">📊</span>No income data yet</div>`;
 
   // bike-wise fine tracking (grouped by bike name + vehicle number)
@@ -2480,12 +2486,17 @@ function downloadReportPDF(){
 
   const byBike = {};
   getFilteredReturnedRentals().forEach(r=>{
-    byBike[r.bikeName] = (byBike[r.bikeName]||0) + netRentalIncome(r);
+    const key = r.bikeId || r.bikeName;
+    if(!byBike[key]) byBike[key] = {name: r.bikeName, bikeId: r.bikeId, amt: 0};
+    byBike[key].amt += netRentalIncome(r);
   });
+  const allBikesForPdf = loadBikes();
   if(Object.keys(byBike).length){
     lines.push({text:'Bike-wise Income', bold:true, size:13, gap:18});
-    Object.entries(byBike).forEach(([name,amt])=>{
-      lines.push({text:`${name}: Rs.${amt}`, size:11});
+    Object.values(byBike).forEach(row=>{
+      const b = allBikesForPdf.find(x=>x.id===row.bikeId);
+      const label = row.name + (b ? ' ('+b.plate+')' : '');
+      lines.push({text:`${label}: Rs.${row.amt}`, size:11});
     });
   }
 
@@ -2506,11 +2517,18 @@ function shareReportWhatsApp(){
 
   const byBike = {};
   getFilteredReturnedRentals().forEach(r=>{
-    byBike[r.bikeName] = (byBike[r.bikeName]||0) + netRentalIncome(r);
+    const key = r.bikeId || r.bikeName;
+    if(!byBike[key]) byBike[key] = {name: r.bikeName, bikeId: r.bikeId, amt: 0};
+    byBike[key].amt += netRentalIncome(r);
   });
+  const allBikesForWA = loadBikes();
   if(Object.keys(byBike).length){
     text += `\n*Bike-wise Income*\n`;
-    Object.entries(byBike).forEach(([name,amt])=>{ text += `${name}: ₹${amt}\n`; });
+    Object.values(byBike).forEach(row=>{
+      const b = allBikesForWA.find(x=>x.id===row.bikeId);
+      const label = row.name + (b ? ' ('+b.plate+')' : '');
+      text += `${label}: ₹${row.amt}\n`;
+    });
   }
 
   const url = 'https://wa.me/?text=' + encodeURIComponent(text);
