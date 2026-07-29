@@ -1352,18 +1352,18 @@ function render(){
   const activeRentals = loadRentals().filter(r=>r.status==='active');
   const longPending = activeRentals.filter(r=>{
     const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
-    return days >= 30;
+    return days >= 29;
   });
   const bikesForPlate = bikes;
   document.getElementById('longPendingSection').innerHTML = longPending.length
     ? `<div class="alert-card">
-        <div class="alert-head">⚠️ Long Pending Rentals (30+ Days)</div>
+        <div class="alert-head">⚠️ Long Pending Rentals (29+ Days)</div>
         ${longPending.map(r=>{
           const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
           const bike = bikesForPlate.find(b=>b.id===r.bikeId);
           const balanceDue = roundMoney(days * (r.rate||0) - totalPaidSoFar(r));
           return `<div class="summary-row" style="border-bottom:1px solid #EFC3B7;align-items:flex-start;">
-            <span>${escapeHTML(r.customerName)} · ${escapeHTML(bike?bike.plate:'-')}<br>
+            <span>${escapeHTML(r.customerName)} · ${escapeHTML(r.bikeName)}${bike ? ' ('+escapeHTML(bike.plate)+')' : ''}<br>
               <span style="font-size:11px;color:#8a8272;font-weight:400;">Rent Date: ${formatDMY(r.startDate)} · ${days} days</span><br>
               <span class="amt" style="color:var(--rust);font-size:13px;">₹${balanceDue}</span>
             </span>
@@ -1711,7 +1711,7 @@ function rentalCardHTML(r){
   const msSince = isActive ? (new Date() - new Date(r.startDate + 'T00:00:00')) : 0;
   const daysSince = isActive ? Math.floor(msSince / 86400000) : 0;
   const hoursSince = isActive ? Math.floor((msSince % 86400000) / 3600000) : 0;
-  const isLongPending = isActive && daysSince >= 30;
+  const isLongPending = isActive && daysSince >= 29;
   const runningLabel = daysSince > 0 ? `${daysSince}d ${hoursSince}h` : `${hoursSince}h`;
   const kmTravelled = (!isActive && r.startKM && r.endKM && parseFloat(r.endKM) >= parseFloat(r.startKM))
     ? (parseFloat(r.endKM) - parseFloat(r.startKM)) : null;
@@ -2932,7 +2932,7 @@ function getDueSummary(){
   const activeRentals = loadRentals().filter(r=>r.status==='active');
   const longPending = activeRentals.filter(r=>{
     const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
-    return days >= 30;
+    return days >= 29;
   });
   const serviceDue = loadMaintList().filter(m=>{
     let due = false;
