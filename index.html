@@ -524,6 +524,12 @@
       <div class="summary-row"><span>Total Income (All Time)</span><span class="amt amt-pos" id="dashIncome">₹0</span></div>
       <div class="summary-row"><span>Total Expense (All Time)</span><span class="amt amt-neg" id="dashExpense">₹0</span></div>
       <div class="summary-row"><span>Total Profit (All Time)</span><span class="amt" id="dashProfit">₹0</span></div>
+      <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.2);margin-top:4px;padding-top:10px;">
+        <span>💵 Total Cash Collected</span><span class="amt amt-pos" id="dashCashCollected">₹0</span>
+      </div>
+    </div>
+    <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">
+      Income = Returned rentals-ன் revenue மட்டும் · Cash Collected = Active + Returned எல்லாத்தின் கையில வந்த பணம்
     </div>
     <div id="longPendingSection"></div>
     <div id="returnedPendingSection"></div>
@@ -1445,6 +1451,17 @@ function render(){
   dashProfitEl.className = 'amt ' + (allTimeNet>=0 ? 'amt-pos' : 'amt-neg');
   document.getElementById('dashIncome').textContent = '₹'+allTimeIncome;
   document.getElementById('dashExpense').textContent = '₹'+allTimeExpAll;
+
+  // total cash actually collected (advance + mid-rental payments for active rentals,
+  // plus advance + payments + received for returned rentals) — differs from "Income"
+  // because Income only counts settled/returned rentals
+  const allRentalsForCash = loadRentals();
+  const cashCollected = allRentalsForCash.reduce((s,r)=>{
+    const base = totalPaidSoFar(r);
+    const extra = r.status === 'returned' ? (r.received||0) : 0;
+    return s + base + extra;
+  }, 0);
+  document.getElementById('dashCashCollected').textContent = '₹'+roundMoney(cashCollected);
 
   // today's income / this month income
   const todayIncome = history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0);
