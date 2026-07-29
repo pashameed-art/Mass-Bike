@@ -174,26 +174,28 @@
 
   .fab{
     position:fixed;
-    left:20px;
-    bottom:28px;
-    width:58px;height:58px;
+    left:16px;
+    bottom:20px;
+    width:48px;height:48px;
+    opacity:0.88;
+    backdrop-filter:blur(2px);
     border-radius:50%;
     background:linear-gradient(135deg, var(--mustard), var(--mustard-dark));
     color:var(--teal-dark);
     border:none;
-    font-size:28px;
+    font-size:22px;
     font-weight:800;
     line-height:1;
     display:flex;
     align-items:center;
     justify-content:center;
-    box-shadow:0 8px 24px rgba(212,175,55,0.5), 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow:0 6px 18px rgba(212,175,55,0.4), 0 2px 6px rgba(0,0,0,0.25);
     z-index:40;
     cursor:pointer;
-    transition:transform 0.15s ease, box-shadow 0.15s ease;
+    transition:transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
     animation:fabPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
   }
-  .fab:active{transform:scale(0.9);}
+  .fab:active{transform:scale(0.9);opacity:1;}
   @keyframes fabPop{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
   .stat .num{font-size:26px;font-weight:800;color:var(--teal);letter-spacing:-0.5px;}
   .stat .label{font-size:10.5px;color:#6b6355;margin-top:4px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;}
@@ -1443,7 +1445,19 @@ function render(){
   const allTimeIncome = history.reduce((s,r)=>s+netRentalIncome(r),0);
   const allMaintCost = loadMaintList().reduce((s,m)=>s+(m.cost||0),0);
   const allTimeExpAll = expTotal + allMaintCost;
-  const allTimeNet = allTimeIncome - allTimeExpAll;
+
+  // total cash actually collected (advance + mid-rental payments for active rentals,
+  // plus advance + payments + received for returned rentals)
+  const allRentalsForCash = loadRentals();
+  const cashCollected = roundMoney(allRentalsForCash.reduce((s,r)=>{
+    const base = totalPaidSoFar(r);
+    const extra = r.status === 'returned' ? (r.received||0) : 0;
+    return s + base + extra;
+  }, 0));
+
+  // profit = actual cash collected minus expenses (not booked/invoiced income) —
+  // money still pending from the customer is not counted as profit yet
+  const allTimeNet = roundMoney(cashCollected - allTimeExpAll);
 
   // dashboard profit stat (always all-time, unaffected by report filter)
   const dashProfitEl = document.getElementById('dashProfit');
@@ -1451,17 +1465,7 @@ function render(){
   dashProfitEl.className = 'amt ' + (allTimeNet>=0 ? 'amt-pos' : 'amt-neg');
   document.getElementById('dashIncome').textContent = '₹'+allTimeIncome;
   document.getElementById('dashExpense').textContent = '₹'+allTimeExpAll;
-
-  // total cash actually collected (advance + mid-rental payments for active rentals,
-  // plus advance + payments + received for returned rentals) — differs from "Income"
-  // because Income only counts settled/returned rentals
-  const allRentalsForCash = loadRentals();
-  const cashCollected = allRentalsForCash.reduce((s,r)=>{
-    const base = totalPaidSoFar(r);
-    const extra = r.status === 'returned' ? (r.received||0) : 0;
-    return s + base + extra;
-  }, 0);
-  document.getElementById('dashCashCollected').textContent = '₹'+roundMoney(cashCollected);
+  document.getElementById('dashCashCollected').textContent = '₹'+cashCollected;
 
   // today's income / this month income
   const todayIncome = history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0);
