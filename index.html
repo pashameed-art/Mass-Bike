@@ -2668,7 +2668,48 @@ function gisLoaded(){
     callback: '' // set per-request
   });
   gisInited = true;
-  // if a token was saved this session, nothing to restore (Google tokens aren't persisted across reloads for security)
+  // if the person connected Drive before, try a silent (no-popup) token refresh
+  // to auto-backup once per day — works only if the browser still has an active
+  // Google session with prior consent; otherwise this just quietly does nothing
+  // and the person can tap "Connect Google Drive" manually as usual.
+  try{
+    if(localStorage.getItem('massBikeV1_driveEverConnected') === '1' && gapiInited){
+      attemptSilentDriveAutoBackup();
+    } else if(localStorage.getItem('massBikeV1_driveEverConnected') === '1'){
+      const waitForGapi = setInterval(()=>{
+        if(gapiInited){
+          clearInterval(waitForGapi);
+          attemptSilentDriveAutoBackup();
+        }
+      }, 300);
+    }
+  }catch(e){}
+}
+
+function attemptSilentDriveAutoBackup(){
+  if(localStorage.getItem('massBikeV1_lastDriveBackupDate') === todayStr()) return; // already done today
+  driveTokenClient.callback = (resp)=>{
+    if(resp.error) return; // silent attempt failed (needs interaction) — do nothing, no error shown
+    gapi.client.setToken({access_token: resp.access_token});
+    document.getElementById('driveConnectBox').classList.add('hide');
+    document.getElementById('driveActionsBox').classList.remove('hide');
+    backupToDriveNow(true);
+  };
+  try{ driveTokenClient.requestAccessToken({prompt: ''}); }catch(e){}
+}
+
+function maybeAutoBackupToday(){
+  if(localStorage.getItem('massBikeV1_lastDriveBackupDate') !== todayStr()){
+    backupToDriveNow(true);
+  }
+}
+
+function showAutoBackupToast(){
+  const el = document.getElementById('driveStatusText');
+  if(!el) return;
+  const original = el.textContent;
+  el.textContent = '✅ Today\'s auto-backup done · ' + formatDMY(todayStr());
+  setTimeout(()=>{ el.textContent = original; }, 4000);
 }
 
 function connectGoogleDrive(){
@@ -2695,6 +2736,8 @@ function connectGoogleDrive(){
     gapi.client.setToken({access_token: resp.access_token});
     document.getElementById('driveConnectBox').classList.add('hide');
     document.getElementById('driveActionsBox').classList.remove('hide');
+    try{ localStorage.setItem('massBikeV1_driveEverConnected', '1'); }catch(e){}
+    maybeAutoBackupToday();
   };
   driveTokenClient.requestAccessToken({prompt: gapi.client.getToken() ? '' : 'consent'});
 }
@@ -2718,8 +2761,8 @@ function buildDriveBackupPayload(){
   };
 }
 
-async function backupToDriveNow(){
-  if(!gapi.client.getToken()){ alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
+async function backupToDriveNow(silent){
+  if(!gapi.client.getToken()){ if(!silent) alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
   try{
     const fileContent = JSON.stringify(buildDriveBackupPayload(), null, 2);
     const searchRes = await gapi.client.drive.files.list({
@@ -2745,9 +2788,11 @@ async function backupToDriveNow(){
       headers: {'Content-Type': `multipart/related; boundary="${boundary}"`},
       body: multipartBody
     });
-    alert('✅ Google Drive-க்கு Backup ஆயிடுச்சு! / Backed up to Google Drive successfully!');
+    try{ localStorage.setItem('massBikeV1_lastDriveBackupDate', todayStr()); }catch(e){}
+    if(!silent) alert('✅ Google Drive-க்கு Backup ஆயிடுச்சு! / Backed up to Google Drive successfully!');
+    else showAutoBackupToast();
   }catch(err){
-    alert('Backup ஆகல்: ' + (err.result ? err.result.error.message : err.message));
+    if(!silent) alert('Backup ஆகல்: ' + (err.result ? err.result.error.message : err.message));
   }
 }
 
