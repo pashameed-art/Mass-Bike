@@ -617,6 +617,8 @@
       <div id="repBikeList"></div>
       <div class="section-title">Bike-wise Fines</div>
       <div id="repFineList"></div>
+      <div class="section-title">💵 Cash Collected Breakdown</div>
+      <div id="repCashBreakdown"></div>
     </div>
     <div class="addbar" style="display:flex;gap:10px;margin-top:18px;">
       <button class="btn btn-outline" style="flex:1;" onclick="downloadReportPDF()">📄 Download PDF</button>
@@ -1466,6 +1468,36 @@ function render(){
   document.getElementById('dashIncome').textContent = '₹'+allTimeIncome;
   document.getElementById('dashExpense').textContent = '₹'+allTimeExpAll;
   document.getElementById('dashCashCollected').textContent = '₹'+cashCollected;
+
+  // per-rental cash collected breakdown (so the total is fully auditable)
+  const cashBreakdownRows = allRentalsForCash.map(r=>{
+    const bikeForRow = bikes.find(b=>b.id===r.bikeId);
+    const advance = r.advance || 0;
+    const paymentsSum = roundMoney((r.payments||[]).reduce((s,p)=>s+(p.amount||0),0));
+    const receivedAtReturn = r.status === 'returned' ? (r.received||0) : 0;
+    const rowTotal = roundMoney(advance + paymentsSum + receivedAtReturn);
+    return {r, bikeForRow, advance, paymentsSum, receivedAtReturn, rowTotal};
+  }).filter(x=>x.rowTotal > 0).sort((a,b)=> b.rowTotal - a.rowTotal);
+
+  document.getElementById('repCashBreakdown').innerHTML = cashBreakdownRows.length
+    ? `<div class="summary-card">` + cashBreakdownRows.map(x=>{
+        const label = x.r.bikeName + (x.bikeForRow ? ' ('+x.bikeForRow.plate+')' : '');
+        const parts = [];
+        if(x.advance) parts.push('Advance ₹'+x.advance);
+        if(x.paymentsSum) parts.push('Payments ₹'+x.paymentsSum);
+        if(x.receivedAtReturn) parts.push('Received ₹'+x.receivedAtReturn);
+        return `<div class="summary-row" style="align-items:flex-start;">
+          <span>${escapeHTML(label)} · ${escapeHTML(x.r.customerName)}<br>
+            <span style="font-size:11px;opacity:0.75;">${parts.join(' + ')}</span>
+          </span>
+          <span class="amt amt-pos">₹${x.rowTotal}</span>
+        </div>`;
+      }).join('') + `
+      <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.3);margin-top:6px;padding-top:10px;">
+        <span style="font-weight:700;">Total</span><span class="amt amt-pos">₹${cashCollected}</span>
+      </div>
+      </div>`
+    : `<div class="empty"><span class="big">💵</span>No cash collected yet</div>`;
 
   // today's income / this month income
   const todayIncome = history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0);
