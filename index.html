@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4.1</title>
+<title>MASS BIKE V4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -478,54 +478,6 @@
     body.printing-receipt #receiptModalOverlay .modal-actions{display:none !important;}
     body.printing-receipt main, body.printing-receipt section{display:none !important;}
   }
-
-  /* ===== V4.1 PREMIUM DASHBOARD ===== */
-  .pdb-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#064F3B 0%,#0A2A20 58%,#123D31 100%);color:#fff;border-radius:24px;padding:18px 18px 20px;margin-bottom:14px;box-shadow:0 12px 30px rgba(6,79,59,.22);border:1px solid rgba(212,175,55,.28)}
-  .pdb-hero:before{content:"";position:absolute;width:180px;height:180px;border-radius:50%;right:-80px;top:-90px;background:rgba(212,175,55,.12)}
-  .pdb-hero:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;left:-70px;bottom:-80px;background:rgba(255,255,255,.04)}
-  .pdb-kicker{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:#E4C158;font-weight:800;position:relative;z-index:1}
-  .pdb-title{font-family:'Baloo Thambi 2',sans-serif;font-size:25px;line-height:1.05;font-weight:800;margin:4px 0 3px;position:relative;z-index:1}
-  .pdb-date{font-size:11px;opacity:.72;position:relative;z-index:1}
-  .pdb-live{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);padding:7px 10px;border-radius:999px;font-size:10.5px;font-weight:700;position:relative;z-index:1}
-  .pdb-dot{width:7px;height:7px;border-radius:50%;background:#6FE0A8;box-shadow:0 0 0 4px rgba(111,224,168,.12)}
-  .pdb-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
-  .pdb-kpi{background:#fff;border:1px solid var(--line);border-radius:18px;padding:13px 12px;box-shadow:0 4px 16px rgba(31,41,55,.055);min-width:0}
-  .pdb-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:#776F61;font-weight:700;text-transform:uppercase;letter-spacing:.45px}
-  .pdb-kpi-icon{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#F5F0DF;font-size:15px}
-  .pdb-kpi-value{font-family:'Baloo Thambi 2',sans-serif;color:var(--teal);font-size:22px;font-weight:800;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pdb-kpi-sub{font-size:10px;color:#8A8272;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pdb-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:12px 0 18px}
-  .pdb-action{border:1px solid var(--line);background:#fff;border-radius:15px;padding:10px 5px 9px;text-align:center;font-family:inherit;font-weight:700;color:var(--teal);font-size:10px;box-shadow:0 3px 10px rgba(31,41,55,.04);cursor:pointer}
-  .pdb-action:active{transform:scale(.96)}
-  .pdb-action-icon{display:block;font-size:18px;margin-bottom:4px}
-  .pdb-panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:14px;margin-bottom:14px;box-shadow:0 3px 14px rgba(31,41,55,.045)}
-  .pdb-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-  .pdb-panel-title{font-family:'Baloo Thambi 2',sans-serif;color:var(--teal);font-size:17px;font-weight:800}
-  .pdb-panel-note{font-size:9.5px;color:#928A7C}
-  .pdb-bars{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;align-items:end;height:125px}
-  .pdb-bar-col{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;min-width:0}
-  .pdb-bar-wrap{height:92px;width:100%;display:flex;align-items:flex-end;justify-content:center}
-  .pdb-bar{width:min(28px,72%);min-height:4px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#E4C158,#B8941F);box-shadow:0 3px 8px rgba(212,175,55,.22)}
-  .pdb-bar-value{font-size:8px;color:#655E51;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px}
-  .pdb-bar-label{font-size:8.5px;color:#8A8272;font-weight:600}
-  .pdb-util-row{margin:10px 0 0}
-  .pdb-util-meta{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:#5C554A;margin-bottom:5px}
-  .pdb-track{height:9px;background:#EFEBDD;border-radius:99px;overflow:hidden}
-  .pdb-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),#0E8F5F)}
-  .pdb-bike-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #EEE8DA}
-  .pdb-bike-row:last-child{border-bottom:0;padding-bottom:0}
-  .pdb-bike-name{font-size:12px;font-weight:800;color:#2B302D}
-  .pdb-bike-meta{font-size:9.5px;color:#8A8272;margin-top:2px}
-  .pdb-bike-income{font-family:'Baloo Thambi 2',sans-serif;font-size:14px;font-weight:800;color:var(--teal);text-align:right}
-  .pdb-alerts{display:grid;gap:8px}
-  .pdb-alert{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:14px;background:#FFF7EF;border:1px solid #F1D8C7}
-  .pdb-alert-icon{width:32px;height:32px;border-radius:10px;background:#FDE5D7;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-  .pdb-alert-main{flex:1;min-width:0}
-  .pdb-alert-title{font-size:11px;font-weight:800;color:#8E3427}
-  .pdb-alert-sub{font-size:9.5px;color:#8A8272;margin-top:2px}
-  .pdb-empty{font-size:11px;color:#8A8272;text-align:center;padding:12px 4px}
-  @media(max-width:380px){.pdb-actions{grid-template-columns:repeat(2,1fr)}.pdb-kpi-value{font-size:20px}}
-
 </style>
 </head>
 <body>
@@ -564,56 +516,23 @@
 
   <!-- DASHBOARD -->
   <section id="tab-dashboard">
-    <div class="pdb-hero">
-      <div class="pdb-kicker">MASS BIKE · BUSINESS CONTROL</div>
-      <div class="pdb-title">Good Day, MASS BIKE 👋</div>
-      <div class="pdb-date" id="pdbDate">Today</div>
-      <div class="pdb-live"><span class="pdb-dot"></span><span>Live business overview · Data stored on this device</span></div>
+    <div class="stats" style="grid-template-columns:repeat(4, 1fr);gap:8px;">
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">🏍️</div><div class="num" id="statTotal" style="font-size:20px;">0</div><div class="label" style="font-size:9px;">Total Bikes</div></div>
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">✅</div><div class="num" id="statAvail" style="font-size:20px;">0</div><div class="label" style="font-size:9px;">Available</div></div>
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">☀️</div><div class="num" id="statTodayIncome" style="font-size:16px;">₹0</div><div class="label" style="font-size:9px;">Today's Income</div></div>
+      <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">📅</div><div class="num" id="statMonthIncome" style="font-size:16px;">₹0</div><div class="label" style="font-size:9px;">This Month</div></div>
     </div>
-
-    <div class="pdb-kpis">
-      <div class="pdb-kpi"><div class="pdb-kpi-top"><span>Today's Revenue</span><span class="pdb-kpi-icon">☀️</span></div><div class="pdb-kpi-value" id="pdbTodayRevenue">₹0</div><div class="pdb-kpi-sub" id="pdbTodayRevenueSub">Returned rentals today</div></div>
-      <div class="pdb-kpi"><div class="pdb-kpi-top"><span>Cash Collected</span><span class="pdb-kpi-icon">💵</span></div><div class="pdb-kpi-value" id="pdbCashCollected">₹0</div><div class="pdb-kpi-sub" id="pdbCashSub">All recorded payments</div></div>
-      <div class="pdb-kpi"><div class="pdb-kpi-top"><span>Pending Collection</span><span class="pdb-kpi-icon">📌</span></div><div class="pdb-kpi-value" id="pdbPending">₹0</div><div class="pdb-kpi-sub" id="pdbPendingSub">Customer balance</div></div>
-      <div class="pdb-kpi"><div class="pdb-kpi-top"><span>Net Profit</span><span class="pdb-kpi-icon">📈</span></div><div class="pdb-kpi-value" id="pdbProfit">₹0</div><div class="pdb-kpi-sub" id="pdbProfitSub">Cash collected − expenses</div></div>
-      <div class="pdb-kpi"><div class="pdb-kpi-top"><span>Available Bikes</span><span class="pdb-kpi-icon">✅</span></div><div class="pdb-kpi-value" id="pdbAvailable">0</div><div class="pdb-kpi-sub" id="pdbFleetSub">0 total bikes</div></div>
-      <div class="pdb-kpi"><div class="pdb-kpi-top"><span>Active Rentals</span><span class="pdb-kpi-icon">🔑</span></div><div class="pdb-kpi-value" id="pdbActive">0</div><div class="pdb-kpi-sub" id="pdbActiveSub">0 bikes currently rented</div></div>
-    </div>
-
-    <div class="pdb-actions">
-      <button class="pdb-action" onclick="openRentModal()"><span class="pdb-action-icon">➕</span>New Rental</button>
-      <button class="pdb-action" onclick="openReturnFromDashboard()"><span class="pdb-action-icon">↩️</span>Return Bike</button>
-      <button class="pdb-action" onclick="openExpenseModal()"><span class="pdb-action-icon">💸</span>Add Expense</button>
-      <button class="pdb-action" onclick="selectMenuTab('reports')"><span class="pdb-action-icon">📊</span>Reports</button>
-    </div>
-
-    <div class="pdb-panel">
-      <div class="pdb-panel-head"><div class="pdb-panel-title">📊 Revenue Trend</div><div class="pdb-panel-note">Last 6 months</div></div>
-      <div class="pdb-bars" id="pdbRevenueBars"></div>
-    </div>
-
-    <div class="pdb-panel">
-      <div class="pdb-panel-head"><div class="pdb-panel-title">🚲 Fleet Utilization</div><div class="pdb-panel-note" id="pdbUtilLabel">Last 30 days</div></div>
-      <div id="pdbUtilization"></div>
-    </div>
-
-    <div class="pdb-panel">
-      <div class="pdb-panel-head"><div class="pdb-panel-title">🏆 Top Performing Bikes</div><div class="pdb-panel-note">Revenue</div></div>
-      <div id="pdbTopBikes"></div>
-    </div>
-
-    <div class="pdb-panel">
-      <div class="pdb-panel-head"><div class="pdb-panel-title">⚡ Attention Required</div><div class="pdb-panel-note">Priority alerts</div></div>
-      <div class="pdb-alerts" id="pdbAlerts"></div>
-    </div>
-
     <div class="summary-card" style="margin-bottom:16px;">
       <div class="summary-row"><span>Total Income (All Time)</span><span class="amt amt-pos" id="dashIncome">₹0</span></div>
       <div class="summary-row"><span>Total Expense (All Time)</span><span class="amt amt-neg" id="dashExpense">₹0</span></div>
       <div class="summary-row"><span>Total Profit (All Time)</span><span class="amt" id="dashProfit">₹0</span></div>
-      <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.2);margin-top:4px;padding-top:10px;"><span>💵 Total Cash Collected</span><span class="amt amt-pos" id="dashCashCollected">₹0</span></div>
+      <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.2);margin-top:4px;padding-top:10px;">
+        <span>💵 Total Cash Collected</span><span class="amt amt-pos" id="dashCashCollected">₹0</span>
+      </div>
     </div>
-    <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">Income = Returned rentals-ன் revenue மட்டும் · Cash Collected = Active + Returned எல்லாத்தின் கையில வந்த பணம்</div>
+    <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">
+      Income = Returned rentals-ன் revenue மட்டும் · Cash Collected = Active + Returned எல்லாத்தின் கையில வந்த பணம்
+    </div>
     <div id="longPendingSection"></div>
     <div id="returnedPendingSection"></div>
     <div id="serviceDueSection"></div>
@@ -718,7 +637,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.1.0</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.0.0</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -790,7 +709,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.1</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1149,7 +1068,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.1.0';
+const APP_VERSION = '4.0.0';
 const APP_BUILD = 'Core Architecture';
 const STORAGE_KEY = 'massBikeV1_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV1_invoiceCounter';
@@ -1508,85 +1427,6 @@ function roundMoney(n){
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-
-function formatINR(n){
-  const v = roundMoney(n||0);
-  return (v < 0 ? '-₹' : '₹') + Math.abs(v).toLocaleString('en-IN',{maximumFractionDigits:2});
-}
-function monthKeyOffset(offset){
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth()-offset);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-}
-function openReturnFromDashboard(){
-  const active = loadRentals().filter(r=>r.status==='active').sort((a,b)=>b.id-a.id);
-  if(!active.length){ alert('Active rental இல்லை / No active rental found'); return; }
-  openReturnModal(active[0].id);
-}
-function renderPremiumDashboard(bikes, rentals, expenses, maintenance, allTimeExpAll, cashCollected, allTimeNet, history){
-  const today = todayStr();
-  const monthPrefix = today.slice(0,7);
-  const active = rentals.filter(r=>r.status==='active');
-  const returned = rentals.filter(r=>r.status==='returned');
-  const pending = roundMoney(active.reduce((sum,r)=>{
-    const days = Math.max(1,diffDaysLocal(r.startDate,today));
-    return sum + Math.max(0, roundMoney(days*(r.rate||0)-totalPaidSoFar(r)));
-  },0) + returned.reduce((sum,r)=>sum+Math.max(0,r.balance||0),0));
-  const todayRevenue = roundMoney(returned.filter(r=>r.returnDate===today).reduce((s,r)=>s+netRentalIncome(r),0));
-  const monthRevenue = roundMoney(returned.filter(r=>(r.returnDate||'').slice(0,7)===monthPrefix).reduce((s,r)=>s+netRentalIncome(r),0));
-  const monthExpense = roundMoney(expenses.filter(e=>(e.date||'').slice(0,7)===monthPrefix).reduce((s,e)=>s+(e.amount||0),0) + maintenance.filter(m=>(m.date||'').slice(0,7)===monthPrefix).reduce((s,m)=>s+(m.cost||0),0));
-  const available = bikes.filter(b=>b.status==='available').length;
-  const utilDays = Math.min(100, bikes.length ? roundMoney((returned.reduce((sum,r)=>{
-    const end=r.returnDate||today; const start=r.startDate||end;
-    const days=Math.max(1,diffDaysLocal(start,end));
-    return sum + days;
-  },0)/(bikes.length*30))*100) : 0);
-
-  const set=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
-  set('pdbDate', formatDMY(today)+' · '+monthLabel(monthPrefix));
-  set('pdbTodayRevenue',formatINR(todayRevenue));
-  set('pdbTodayRevenueSub',todayRevenue>0?'Revenue booked today':'No returned rental today');
-  set('pdbCashCollected',formatINR(cashCollected));
-  set('pdbCashSub',formatINR(cashCollected)+' total received');
-  set('pdbPending',formatINR(pending));
-  set('pdbPendingSub',formatINR(pending)+' to collect');
-  set('pdbProfit',formatINR(allTimeNet));
-  set('pdbProfitSub',allTimeNet>=0?'Positive cash profit':'Negative cash position');
-  set('pdbAvailable',available);
-  set('pdbFleetSub',bikes.length+' total bikes');
-  set('pdbActive',active.length);
-  set('pdbActiveSub',active.length+' bike'+(active.length===1?' is':'s are')+' currently rented');
-
-  const monthly=[];
-  for(let i=5;i>=0;i--){
-    const key=monthKeyOffset(i);
-    const val=roundMoney(returned.filter(r=>(r.returnDate||'').slice(0,7)===key).reduce((s,r)=>s+netRentalIncome(r),0));
-    monthly.push({key,val,label:monthLabel(key).split(' ')[0]});
-  }
-  const max=Math.max(1,...monthly.map(x=>x.val));
-  const bars=document.getElementById('pdbRevenueBars');
-  if(bars) bars.innerHTML=monthly.map(x=>`<div class="pdb-bar-col"><div class="pdb-bar-value">${x.val?formatINR(x.val):'₹0'}</div><div class="pdb-bar-wrap"><div class="pdb-bar" style="height:${Math.max(4,Math.round((x.val/max)*100))}%"></div></div><div class="pdb-bar-label">${x.label}</div></div>`).join('');
-
-  const util=document.getElementById('pdbUtilization');
-  if(util) util.innerHTML=`<div class="pdb-util-row"><div class="pdb-util-meta"><span>Overall utilization</span><span>${utilDays}%</span></div><div class="pdb-track"><div class="pdb-fill" style="width:${Math.min(100,utilDays)}%"></div></div></div><div style="font-size:9.5px;color:#8A8272;margin-top:7px">Based on completed rental days across the current fleet.</div>`;
-
-  const bikeRevenue={};
-  returned.forEach(r=>{bikeRevenue[r.bikeId]=(bikeRevenue[r.bikeId]||0)+netRentalIncome(r);});
-  const top=[...bikes].map(b=>({bike:b,income:roundMoney(bikeRevenue[b.id]||0)})).sort((a,b)=>b.income-a.income).slice(0,4);
-  const topEl=document.getElementById('pdbTopBikes');
-  if(topEl) topEl.innerHTML=top.length?top.map(x=>`<div class="pdb-bike-row"><div><div class="pdb-bike-name">${escapeHTML(x.bike.name)}</div><div class="pdb-bike-meta">${escapeHTML(x.bike.plate)} · ${statusLabel(x.bike.status)}</div></div><div class="pdb-bike-income">${formatINR(x.income)}</div></div>`).join(''):'<div class="pdb-empty">No bike data yet</div>';
-
-  const alerts=[];
-  if(pending>0) alerts.push({i:'💰',t:'Pending collection',s:formatINR(pending)+' customer balance',fn:"document.getElementById('returnedPendingSection').scrollIntoView({behavior:'smooth'})"});
-  if(active.length) alerts.push({i:'🔑',t:'Active rentals',s:active.length+' bike'+(active.length===1?' is':'s are')+' currently out',fn:"selectMenuTab('rentals')"});
-  const serviceDue=maintenance.filter(m=>{let d=false,k=false;if(m.nextDue)d=diffDaysLocal(today,m.nextDue)<=7;if(m.nextDueKM){const b=bikes.find(x=>x.id===m.bikeId);if(b&&b.currentKM)k=parseFloat(b.currentKM)>=parseFloat(m.nextDueKM)-200;}return d||k;}).length;
-  if(serviceDue) alerts.push({i:'🛠️',t:'Service due',s:serviceDue+' maintenance item'+(serviceDue===1?'':'s')+' need attention',fn:"selectMenuTab('maintenance')"});
-  if(!alerts.length) alerts.push({i:'✅',t:'All clear',s:'No urgent dashboard alerts right now',fn:''});
-  const alertsEl=document.getElementById('pdbAlerts');
-  if(alertsEl) alertsEl.innerHTML=alerts.map(a=>`<div class="pdb-alert" ${a.fn?`onclick="${a.fn}" style="cursor:pointer"`:''}><div class="pdb-alert-icon">${a.i}</div><div class="pdb-alert-main"><div class="pdb-alert-title">${escapeHTML(a.t)}</div><div class="pdb-alert-sub">${escapeHTML(a.s)}</div></div><div style="font-size:14px;color:#A59A89">›</div></div>`).join('');
-}
-
 function render(){
   bikes = loadBikes();
 
@@ -1704,7 +1544,6 @@ function render(){
   document.getElementById('dashIncome').textContent = '₹'+allTimeIncome;
   document.getElementById('dashExpense').textContent = '₹'+allTimeExpAll;
   document.getElementById('dashCashCollected').textContent = '₹'+cashCollected;
-  renderPremiumDashboard(bikes, allRentalsForCash, allExpenses, loadMaintList(), allTimeExpAll, cashCollected, allTimeNet, history);
 
   // per-rental cash collected breakdown (so the total is fully auditable)
   const cashBreakdownRows = allRentalsForCash.map(r=>{
