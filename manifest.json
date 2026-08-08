@@ -25,5 +25,10 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "scope": "./",
+  "id": "mass-bike-v4",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }
