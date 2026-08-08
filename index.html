@@ -1421,7 +1421,7 @@ function render(){
 
   // expenses
   const allExpenses = loadExpenses().sort((a,b)=>b.id-a.id);
-  const expTotal = allExpenses.reduce((s,e)=>s+(e.amount||0),0);
+  const expTotal = roundMoney(allExpenses.reduce((s,e)=>s+(e.amount||0),0));
   document.getElementById('expTotal').textContent = '₹'+expTotal;
   const expenseQ = (document.getElementById('expenseSearchInput').value || '').trim().toLowerCase();
   const expenses = allExpenses.filter(e => !expenseQ ||
@@ -1444,9 +1444,9 @@ function render(){
     : `<div class="empty"><span class="big">🛠️</span>No maintenance records found</div>`;
 
   // reports (all-time, for dashboard profit)
-  const allTimeIncome = history.reduce((s,r)=>s+netRentalIncome(r),0);
-  const allMaintCost = loadMaintList().reduce((s,m)=>s+(m.cost||0),0);
-  const allTimeExpAll = expTotal + allMaintCost;
+  const allTimeIncome = roundMoney(history.reduce((s,r)=>s+netRentalIncome(r),0));
+  const allMaintCost = roundMoney(loadMaintList().reduce((s,m)=>s+(m.cost||0),0));
+  const allTimeExpAll = roundMoney(expTotal + allMaintCost);
 
   // total cash actually collected (advance + mid-rental payments for active rentals,
   // plus advance + payments + received for returned rentals)
@@ -1490,7 +1490,7 @@ function render(){
           <span>${escapeHTML(label)} · ${escapeHTML(x.r.customerName)}<br>
             <span style="font-size:11px;opacity:0.75;">${parts.join(' + ')}</span>
           </span>
-          <span class="amt amt-pos">₹${x.rowTotal}</span>
+          <span class="amt amt-pos">₹${roundMoney(x.rowTotal)}</span>
         </div>`;
       }).join('') + `
       <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.3);margin-top:6px;padding-top:10px;">
@@ -1500,9 +1500,9 @@ function render(){
     : `<div class="empty"><span class="big">💵</span>No cash collected yet</div>`;
 
   // today's income / this month income
-  const todayIncome = history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0);
+  const todayIncome = roundMoney(history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0));
   const thisMonthPrefix = todayStr().slice(0,7);
-  const monthIncome = history.filter(r=>(r.returnDate||'').slice(0,7)===thisMonthPrefix).reduce((s,r)=>s+netRentalIncome(r),0);
+  const monthIncome = roundMoney(history.filter(r=>(r.returnDate||'').slice(0,7)===thisMonthPrefix).reduce((s,r)=>s+netRentalIncome(r),0));
   document.getElementById('statTodayIncome').textContent = '₹'+todayIncome;
   document.getElementById('statMonthIncome').textContent = '₹'+monthIncome;
 
@@ -1537,10 +1537,10 @@ function render(){
   const filteredExpenses = reportFilter.type === 'all' ? loadExpenses() : loadExpenses().filter(e=>inRange(e.date));
   const filteredMaint = reportFilter.type === 'all' ? loadMaintList() : loadMaintList().filter(m=>inRange(m.date));
 
-  const totalIncome = filteredHistory.reduce((s,r)=>s+netRentalIncome(r),0);
-  const filteredExpTotal = filteredExpenses.reduce((s,e)=>s+(e.amount||0),0);
-  const maintCost = filteredMaint.reduce((s,m)=>s+(m.cost||0),0);
-  const totalExpAll = filteredExpTotal + maintCost;
+  const totalIncome = roundMoney(filteredHistory.reduce((s,r)=>s+netRentalIncome(r),0));
+  const filteredExpTotal = roundMoney(filteredExpenses.reduce((s,e)=>s+(e.amount||0),0));
+  const maintCost = roundMoney(filteredMaint.reduce((s,m)=>s+(m.cost||0),0));
+  const totalExpAll = roundMoney(filteredExpTotal + maintCost);
   const net = totalIncome - totalExpAll;
   document.getElementById('repIncome').textContent = '₹'+totalIncome;
   document.getElementById('repExpenses').textContent = '₹'+totalExpAll;
@@ -1562,7 +1562,7 @@ function render(){
     ? `<div class="summary-card">` + bikeRows.map(row=>{
         const b = bikes.find(x=>x.id===row.bikeId);
         const label = row.name + (b ? ' ('+b.plate+')' : '');
-        return `<div class="summary-row"><span>${escapeHTML(label)}</span><span class="amt amt-pos">₹${row.amt}</span></div>`;
+        return `<div class="summary-row"><span>${escapeHTML(label)}</span><span class="amt amt-pos">₹${roundMoney(row.amt)}</span></div>`;
       }).join('') + `</div>`
     : `<div class="empty"><span class="big">📊</span>No income data yet</div>`;
 
@@ -1579,7 +1579,7 @@ function render(){
   const fineRows = Object.entries(fineByBike);
   document.getElementById('repFineList').innerHTML = fineRows.length
     ? `<div class="summary-card">` + fineRows.map(([label,data])=>
-        `<div class="summary-row"><span>${escapeHTML(label)}<br><span style="font-size:11px;opacity:0.7;">${data.count} fine(s)</span></span><span class="amt amt-neg">₹${data.total}</span></div>`
+        `<div class="summary-row"><span>${escapeHTML(label)}<br><span style="font-size:11px;opacity:0.7;">${data.count} fine(s)</span></span><span class="amt amt-neg">₹${roundMoney(data.total)}</span></div>`
       ).join('') + `</div>`
     : `<div class="empty"><span class="big">🚫</span>No fines recorded</div>`;
 
@@ -1609,7 +1609,7 @@ function render(){
         const mNet = inc - exp;
         return `<div class="summary-row" style="border-bottom:1px solid rgba(250,246,234,0.15);flex-direction:column;align-items:flex-start;gap:4px;padding:10px 0;">
           <span style="font-weight:700;">${monthLabel(month)}</span>
-          <span style="font-size:12.5px;opacity:0.85;">Income ₹${inc} · Expense ₹${exp} · Net <span style="color:${mNet>=0?'#8FE0A8':'#F3A99A'};font-weight:700;">₹${mNet}</span></span>
+          <span style="font-size:12.5px;opacity:0.85;">Income ₹${roundMoney(inc)} · Expense ₹${roundMoney(exp)} · Net <span style="color:${mNet>=0?'#8FE0A8':'#F3A99A'};font-weight:700;">₹${roundMoney(mNet)}</span></span>
         </div>`;
       }).join('') + `</div>`
     : `<div class="empty"><span class="big">📅</span>No monthly data yet</div>`;
@@ -2583,7 +2583,7 @@ function downloadReportPDF(){
     Object.values(byBike).forEach(row=>{
       const b = allBikesForPdf.find(x=>x.id===row.bikeId);
       const label = row.name + (b ? ' ('+b.plate+')' : '');
-      lines.push({text:`${label}: Rs.${row.amt}`, size:11});
+      lines.push({text:`${label}: Rs.${roundMoney(row.amt)}`, size:11});
     });
   }
 
@@ -2614,7 +2614,7 @@ function shareReportWhatsApp(){
     Object.values(byBike).forEach(row=>{
       const b = allBikesForWA.find(x=>x.id===row.bikeId);
       const label = row.name + (b ? ' ('+b.plate+')' : '');
-      text += `${label}: ₹${row.amt}\n`;
+      text += `${label}: ₹${roundMoney(row.amt)}\n`;
     });
   }
 
