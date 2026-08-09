@@ -523,15 +523,17 @@
       <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">📅</div><div class="num" id="statMonthIncome" style="font-size:16px;">₹0</div><div class="label" style="font-size:9px;">This Month</div></div>
     </div>
     <div class="summary-card" style="margin-bottom:16px;">
-      <div class="summary-row"><span>Total Income (All Time)</span><span class="amt amt-pos" id="dashIncome">₹0</span></div>
-      <div class="summary-row"><span>Total Expense (All Time)</span><span class="amt amt-neg" id="dashExpense">₹0</span></div>
-      <div class="summary-row"><span>Total Profit (All Time)</span><span class="amt" id="dashProfit">₹0</span></div>
+      <div class="summary-row"><span>Gross Rental Revenue</span><span class="amt amt-pos" id="dashGrossRevenue">₹0</span></div>
+      <div class="summary-row"><span>💵 Cash Collected</span><span class="amt amt-pos" id="dashCashCollected">₹0</span></div>
+      <div class="summary-row"><span>⏳ Pending Receivable</span><span class="amt amt-neg" id="dashPendingReceivable">₹0</span></div>
+      <div class="summary-row"><span>Total Expenses</span><span class="amt amt-neg" id="dashExpense">₹0</span></div>
       <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.2);margin-top:4px;padding-top:10px;">
-        <span>💵 Total Cash Collected</span><span class="amt amt-pos" id="dashCashCollected">₹0</span>
+        <span style="font-weight:700;">Net Profit</span><span class="amt" id="dashProfit">₹0</span>
       </div>
+      <div class="summary-row"><span>⚠️ Outstanding Amount</span><span class="amt amt-neg" id="dashOutstanding">₹0</span></div>
     </div>
     <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">
-      Income = Returned rentals-ன் revenue மட்டும் · Cash Collected = Active + Returned எல்லாத்தின் கையில வந்த பணம்
+      Gross Revenue = Returned rentals-ன் billed total · Cash Collected = கையில வந்த பணம் (Active+Returned) · Pending Receivable = Active rentals-ல் இன்னும் வராத பணம் · Net Profit = Cash Collected − Expenses · Outstanding = Returned bikes-ல் இன்னும் கட்டாத balance
     </div>
     <div id="longPendingSection"></div>
     <div id="returnedPendingSection"></div>
@@ -1402,7 +1404,7 @@ function render(){
   // long pending rentals (30+ days, unreturned)
   const activeRentals = loadRentals().filter(r=>r.status==='active');
   const longPending = activeRentals.filter(r=>{
-    const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+    const days = calcDays(r.startDate, todayStr());
     return days >= 29;
   });
   const bikesForPlate = bikes;
@@ -1410,7 +1412,7 @@ function render(){
     ? `<div class="alert-card">
         <div class="alert-head">⚠️ Long Pending Rentals (29+ Days)</div>
         ${longPending.map(r=>{
-          const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+          const days = calcDays(r.startDate, todayStr());
           const bike = bikesForPlate.find(b=>b.id===r.bikeId);
           const balanceDue = roundMoney(days * (r.rate||0) - totalPaidSoFar(r));
           return `<div class="summary-row" style="border-bottom:1px solid #EFC3B7;align-items:flex-start;">
@@ -1498,6 +1500,18 @@ function render(){
     return s + base + extra;
   }, 0));
 
+  // pending receivable: expected money not yet collected from rentals still running
+  // (days so far × rate, minus whatever has already been paid on that rental)
+  const pendingReceivable = roundMoney(allRentalsForCash.filter(r=>r.status==='active').reduce((s,r)=>{
+    const days = calcDays(r.startDate, todayStr());
+    const owed = (days * (r.rate||0)) - totalPaidSoFar(r);
+    return s + (owed > 0 ? owed : 0);
+  }, 0));
+
+  // outstanding amount: unpaid balance left on rentals that have already been returned
+  // (should have been settled already — this is money genuinely overdue)
+  const outstandingAmount = roundMoney(history.reduce((s,r)=> s + ((r.balance||0) > 0 ? r.balance : 0), 0));
+
   // profit = actual cash collected minus expenses (not booked/invoiced income) —
   // money still pending from the customer is not counted as profit yet
   const allTimeNet = roundMoney(cashCollected - allTimeExpAll);
@@ -1506,9 +1520,11 @@ function render(){
   const dashProfitEl = document.getElementById('dashProfit');
   dashProfitEl.textContent = (allTimeNet<0?'-₹':'₹')+Math.abs(allTimeNet);
   dashProfitEl.className = 'amt ' + (allTimeNet>=0 ? 'amt-pos' : 'amt-neg');
-  document.getElementById('dashIncome').textContent = '₹'+allTimeIncome;
+  document.getElementById('dashGrossRevenue').textContent = '₹'+allTimeIncome;
   document.getElementById('dashExpense').textContent = '₹'+allTimeExpAll;
   document.getElementById('dashCashCollected').textContent = '₹'+cashCollected;
+  document.getElementById('dashPendingReceivable').textContent = '₹'+pendingReceivable;
+  document.getElementById('dashOutstanding').textContent = '₹'+outstandingAmount;
 
   // per-rental cash collected breakdown (so the total is fully auditable)
   const cashBreakdownRows = allRentalsForCash.map(r=>{
@@ -2105,10 +2121,7 @@ function openReturnModal(rentalId){
 }
 function updateReturnCalc(rental){
   const returnDate = document.getElementById('rReturnDate').value || todayStr();
-  const start = new Date(rental.startDate);
-  const end = new Date(returnDate);
-  let days = Math.round((end - start) / 86400000);
-  if(days < 1) days = 1;
+  const days = calcDays(rental.startDate, returnDate);
   document.getElementById('retDays').value = days + (days===1 ? ' day' : ' days');
   // only auto-fill amount on first calc pass (when user hasn't typed a custom amount)
   if(document.activeElement.id !== 'retAmount'){
@@ -2318,6 +2331,15 @@ document.getElementById('maintModalOverlay').addEventListener('click', (e)=>{
 // ---- CUSTOMER RECEIPT ----
 let currentReceiptRental = null;
 
+// ---- RENTAL BILLING ENGINE (single source of truth for day-based billing) ----
+// Business rule: billing is by CALENDAR DAY, not exact 24-hour periods.
+//   - Day 1 = the start date itself (a same-day rent + return always bills as 1 day).
+//   - Days are counted as the calendar-date difference between start and end
+//     (date-only, time-of-day is ignored for billing purposes).
+//   - Minimum billable duration is always 1 day, even if returned within hours.
+// This function is the ONLY place billable days should be computed — every other
+// part of the app (receipts, return entry, pending-balance calculations, reminders)
+// must call this instead of doing its own date math, so the rule never drifts.
 function calcDays(startDate, endDate){
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -3046,7 +3068,7 @@ function getDueSummary(){
   const currentBikes = loadBikes();
   const activeRentals = loadRentals().filter(r=>r.status==='active');
   const longPending = activeRentals.filter(r=>{
-    const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+    const days = calcDays(r.startDate, todayStr());
     return days >= 29;
   });
   const serviceDue = loadMaintList().filter(m=>{
@@ -3076,7 +3098,7 @@ function checkDailyDueReminder(){
   if(longPending.length){
     html += `<div style="font-weight:700;color:var(--rust);margin-bottom:8px;font-size:13.5px;">⚠️ Long Pending Rentals (${longPending.length})</div>`;
     longPending.forEach(r=>{
-      const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+      const days = calcDays(r.startDate, todayStr());
       const bike = currentBikes.find(b=>b.id===r.bikeId);
       html += `<div class="summary-row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding:10px 0;">
         <span>${escapeHTML(r.customerName)} · ${escapeHTML(bike?bike.plate:'-')}<br>
@@ -3135,7 +3157,7 @@ function sendWhatsAppReminder(rentalId){
   let text = `Hi ${r.customerName}, this is a reminder from MASS BIKE.\n`;
 
   if(r.status === 'active'){
-    const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+    const days = calcDays(r.startDate, todayStr());
     const owed = roundMoney(Math.max(0, (days * (r.rate||0)) - totalPaidSoFar(r)));
     text += `Your rental of ${r.bikeName}${bike ? ' ('+bike.plate+')' : ''} has been running for ${days} days since ${formatDMY(r.startDate)}.\n`;
     if(owed > 0) text += `Pending amount so far: ₹${owed}.\n`;
@@ -3164,12 +3186,65 @@ setInterval(()=>{
   if(rentalsTabVisible || dashboardTabVisible) render();
 }, 60000);
 
-// Register a minimal service worker (enables full "Install App" prompt when hosted on HTTPS)
+// Register a service worker that actually caches the app for real offline use
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
   const swCode = `
-    self.addEventListener('install', e => self.skipWaiting());
-    self.addEventListener('activate', e => self.clients.claim());
-    self.addEventListener('fetch', e => {});
+    const CACHE_NAME = 'massbike-v3-cache';
+    const APP_URL = self.registration.scope;
+
+    self.addEventListener('install', e => {
+      self.skipWaiting();
+      e.waitUntil(
+        caches.open(CACHE_NAME).then(cache =>
+          cache.add(new Request(APP_URL, {cache:'reload'})).catch(()=>{})
+        )
+      );
+    });
+
+    self.addEventListener('activate', e => {
+      e.waitUntil(
+        caches.keys().then(names =>
+          Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
+        )
+      );
+      self.clients.claim();
+    });
+
+    self.addEventListener('fetch', e => {
+      if(e.request.method !== 'GET') return;
+      const isSameOrigin = e.request.url.startsWith(self.location.origin);
+
+      // App shell (this page): cache-first so it opens instantly offline,
+      // and refresh the cache in the background whenever online.
+      if(e.request.mode === 'navigate' || (isSameOrigin && e.request.url === APP_URL)){
+        e.respondWith(
+          caches.match(APP_URL).then(cached => {
+            const network = fetch(e.request).then(res => {
+              if(res && res.status === 200){
+                caches.open(CACHE_NAME).then(cache => cache.put(APP_URL, res.clone()));
+              }
+              return res;
+            }).catch(() => cached);
+            return cached || network;
+          })
+        );
+        return;
+      }
+
+      // Everything else (icons, fonts, Google API scripts): try network first,
+      // fall back to cache, and never break the page if it fails (e.g. offline
+      // Google Drive scripts — those features simply won't work offline, which
+      // is expected since they need a live connection).
+      e.respondWith(
+        fetch(e.request).then(res => {
+          if(res && res.status === 200 && isSameOrigin){
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return res;
+        }).catch(() => caches.match(e.request))
+      );
+    });
   `;
   const swBlob = new Blob([swCode], {type:'application/javascript'});
   const swUrl = URL.createObjectURL(swBlob);
