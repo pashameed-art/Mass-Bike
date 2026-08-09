@@ -856,6 +856,10 @@
       <input type="text" id="editReturnedInfo" disabled>
     </div>
     <div class="field">
+      <label>Already Paid So Far (Advance + Payments) (₹)</label>
+      <input type="text" id="editReturnedPaid" disabled>
+    </div>
+    <div class="field">
       <label>Total Amount (₹)</label>
       <input type="number" id="editRetAmount">
     </div>
@@ -1087,6 +1091,27 @@ function safeSet(key, value){
     return false;
   }
 }
+// Atomically write multiple keys together (e.g. a rental record + the linked bike's
+// status). If any write in the group fails partway through, every key already written
+// in this call is rolled back to its previous value, so the rental and bike status can
+// never end up out of sync with each other.
+function transactionalSet(entries){
+  const snapshot = entries.map(e => ({key: e.key, prev: localStorage.getItem(e.key)}));
+  try{
+    entries.forEach(e => localStorage.setItem(e.key, JSON.stringify(e.value)));
+    mirrorAutoBackup();
+    return true;
+  }catch(err){
+    snapshot.forEach(s => {
+      try{
+        if(s.prev === null) localStorage.removeItem(s.key);
+        else localStorage.setItem(s.key, s.prev);
+      }catch(rollbackErr){ /* best effort */ }
+    });
+    alert('⚠️ Save பண்ண முடியலை! Storage full-ஆ இருக்கலாம். மாற்றங்கள் rollback ஆகி, பழைய நிலைக்கு திரும்பியுள்ளது — data inconsistent ஆகாது.\n\n⚠️ Save failed! Changes were rolled back to the previous state so your rental and bike records stay consistent. Please free up storage (Backup tab) and try again.');
+    return false;
+  }
+}
 function mirrorAutoBackup(){
   try{
     const snapshot = {
@@ -1110,7 +1135,23 @@ function saveRentals(rentals){
   safeSet(RENTAL_KEY, rentals);
 }
 function todayStr(){
-  return new Date().toISOString().slice(0,10);
+  // Always compute today's date in IST (UTC+5:30), regardless of the device's own
+  // timezone setting. Date.now()/getTime() is always an absolute UTC timestamp, so
+  // shifting by the fixed IST offset and reading UTC getters gives the correct
+  // India calendar date even right around midnight (avoids the old UTC-slice bug
+  // where dates could show as "yesterday" for ~5.5 hours after IST midnight).
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(Date.now() + IST_OFFSET_MS);
+  const y = istNow.getUTCFullYear();
+  const m = String(istNow.getUTCMonth()+1).padStart(2,'0');
+  const d = String(istNow.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function nowIST(){
+  // returns a Date object representing "right now" shifted into IST wall-clock time
+  // (use getUTC* accessors on the result, since it's an offset trick, not a real timezone)
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  return new Date(Date.now() + IST_OFFSET_MS);
 }
 function normalizePhone(input){
   let digits = (input||'').replace(/\D/g,'');
@@ -1761,7 +1802,7 @@ function customerCardHTML(c){
 
 function rentalCardHTML(r){
   const isActive = r.status === 'active';
-  const msSince = isActive ? (new Date() - new Date(r.startDate + 'T00:00:00')) : 0;
+  const msSince = isActive ? (Date.now() - new Date(r.startDate + 'T00:00:00+05:30').getTime()) : 0;
   const daysSince = isActive ? Math.floor(msSince / 86400000) : 0;
   const hoursSince = isActive ? Math.floor((msSince % 86400000) / 3600000) : 0;
   const isLongPending = isActive && daysSince >= 29;
@@ -2028,10 +2069,13 @@ function saveRentEntry(){
     startDate, startKM, rate, advance,
     status: 'active'
   });
-  saveRentals(rentals);
 
   const updatedBikes = bikes.map(b => b.id === bikeId ? {...b, status:'rented'} : b);
-  saveBikes(updatedBikes);
+  const ok = transactionalSet([
+    {key: RENTAL_KEY, value: rentals},
+    {key: STORAGE_KEY, value: updatedBikes}
+  ]);
+  if(!ok) return;
 
   closeRentModal();
   document.getElementById('rentalSearchInput').value = '';
@@ -2104,7 +2148,6 @@ function saveReturnEntry(){
   const updatedRentals = rentals.map(r =>
     r.id === rentalId ? {...r, status:'returned', returnDate, endKM, totalAmount, discount, fine, received, balance} : r
   );
-  saveRentals(updatedRentals);
 
   const bikes = loadBikes();
   const updatedBikes = bikes.map(b => {
@@ -2115,7 +2158,11 @@ function saveReturnEntry(){
     }
     return updated;
   });
-  saveBikes(updatedBikes);
+  const ok = transactionalSet([
+    {key: RENTAL_KEY, value: updatedRentals},
+    {key: STORAGE_KEY, value: updatedBikes}
+  ]);
+  if(!ok) return;
 
   closeReturnModal();
   render();
@@ -2368,14 +2415,22 @@ function saveEditActiveRental(){
       if(b.id === newBikeId) return {...b, status:'rented'};
       return b;
     });
-    saveBikes(updatedBikes);
   }
 
   const updatedRentals = rentals.map(r => r.id === rentalId
     ? {...r, bikeId: newBikeId, bikeName: newBike.name, customerName, customerPhone: phoneDigits, startDate, startKM, rate, advance}
     : r
   );
-  saveRentals(updatedRentals);
+
+  if(bikeChanged){
+    const ok = transactionalSet([
+      {key: RENTAL_KEY, value: updatedRentals},
+      {key: STORAGE_KEY, value: updatedBikes}
+    ]);
+    if(!ok) return;
+  } else {
+    saveRentals(updatedRentals);
+  }
 
   closeEditActiveModal();
   render();
@@ -2389,6 +2444,7 @@ function editReturnedRental(rentalId){
   if(!r) return;
   document.getElementById('editReturnedId').value = r.id;
   document.getElementById('editReturnedInfo').value = `${r.bikeName} · ${r.customerName}`;
+  document.getElementById('editReturnedPaid').value = '₹' + totalPaidSoFar(r);
   document.getElementById('editRetAmount').value = r.totalAmount || 0;
   document.getElementById('editRetFine').value = r.fine || 0;
   document.getElementById('editRetDiscount').value = r.discount || 0;
@@ -2399,7 +2455,7 @@ function editReturnedRental(rentalId){
     const fine = parseFloat(document.getElementById('editRetFine').value) || 0;
     const discount = parseFloat(document.getElementById('editRetDiscount').value) || 0;
     const received = parseFloat(document.getElementById('editRetReceived').value) || 0;
-    const balance = roundMoney(total + fine - discount - (r.advance||0) - received);
+    const balance = roundMoney(total + fine - discount - totalPaidSoFar(r) - received);
     document.getElementById('editRetBalance').value = '₹' + balance;
   };
   ['editRetAmount','editRetFine','editRetDiscount','editRetReceived'].forEach(id=>{
@@ -2422,7 +2478,7 @@ function saveEditReturnedRental(){
   const rentals = loadRentals();
   const rental = rentals.find(r=>r.id===id);
   if(!rental) return;
-  const balance = roundMoney(totalAmount + fine - discount - (rental.advance||0) - received);
+  const balance = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
 
   const updated = rentals.map(r => r.id === id ? {...r, totalAmount, fine, discount, received, balance} : r);
   saveRentals(updated);
@@ -2889,10 +2945,13 @@ async function restoreFromDriveNow(){
 
     if(!confirm(`Drive Backup (${formatDMY((data.exportedAt||'').slice(0,10))})\nRecords: ${(data.bikes||[]).length} bikes, ${(data.rentals||[]).length} rentals${integrityWarning}\n\nஇது தற்போதைய data-ஐ மாற்றிவிடும். தொடரவா?`)) return;
 
-    saveBikes(data.bikes || []);
-    saveRentals(data.rentals || []);
-    saveExpenses(data.expenses || []);
-    saveMaintList(data.maintenance || []);
+    const okRestore = transactionalSet([
+      {key: STORAGE_KEY, value: data.bikes || []},
+      {key: RENTAL_KEY, value: data.rentals || []},
+      {key: EXPENSE_KEY, value: data.expenses || []},
+      {key: MAINT_KEY, value: data.maintenance || []}
+    ]);
+    if(!okRestore) return;
     (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r.invoiceNo));
     alert('✅ Google Drive-லேர்ந்து Restore ஆயிடுச்சு!');
     render();
@@ -2962,10 +3021,13 @@ function restoreBackup(event){
       }
 
       if(!confirm(`Backup Version: ${data.version || 'unknown'} · App Version: ${APP_VERSION}\nRecords: ${(data.bikes||[]).length} bikes, ${(data.rentals||[]).length} rentals, ${(data.expenses||[]).length} expenses, ${(data.maintenance||[]).length} maintenance${integrityWarning}\n\nஇது உங்கள் தற்போதைய data-ஐ முழுவதும் மாற்றிவிடும். தொடரவா? / This will replace all current data. Continue?`)) return;
-      saveBikes(data.bikes || []);
-      saveRentals(data.rentals || []);
-      saveExpenses(data.expenses || []);
-      saveMaintList(data.maintenance || []);
+      const okLocalRestore = transactionalSet([
+        {key: STORAGE_KEY, value: data.bikes || []},
+        {key: RENTAL_KEY, value: data.rentals || []},
+        {key: EXPENSE_KEY, value: data.expenses || []},
+        {key: MAINT_KEY, value: data.maintenance || []}
+      ]);
+      if(!okLocalRestore) return;
       (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r.invoiceNo));
       alert('Restore complete!');
       render();
