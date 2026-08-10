@@ -1,36 +1,78 @@
-const CACHE_NAME = 'mass-bike-v4-1-v1';
-const APP_SHELL = ['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+// MASS BIKE — Service Worker
+// Proper same-origin file (not a Blob URL) so caching, versioning, and updates
+// work exactly the way a normal PWA service worker is supposed to.
 
-self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+const CACHE_VERSION = 'massbike-v3.2';
+const APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_VERSION).then((cache) =>
+      Promise.all(
+        APP_SHELL.map((url) =>
+          cache.add(new Request(url, {cache: 'reload'})).catch(() => {})
+        )
+      )
+    )
+  );
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((names) =>
+      Promise.all(
+        names.filter((n) => n !== CACHE_VERSION).map((n) => caches.delete(n))
+      )
+    )
+  );
+  self.clients.claim();
 });
 
-self.addEventListener('message', event => {
-  if(event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
-});
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
 
-self.addEventListener('fetch', event => {
-  const request = event.request;
-  if(request.method !== 'GET') return;
-  const url = new URL(request.url);
-  if(url.origin !== self.location.origin) return;
-  if(request.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
-    event.respondWith(fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
-      return response;
-    }).catch(() => caches.match('./index.html')));
+  // App shell / navigation requests: cache-first for instant offline launch,
+  // refreshed from the network in the background whenever online.
+  if (event.request.mode === 'navigate' || (isSameOrigin && APP_SHELL.some((p) => url.pathname.endsWith(p.replace('./', '/'))))) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const network = fetch(event.request)
+          .then((res) => {
+            if (res && res.status === 200) {
+              caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, res.clone()));
+            }
+            return res;
+          })
+          .catch(() => cached || caches.match('./index.html'));
+        return cached || network;
+      })
+    );
     return;
   }
-  event.respondWith(caches.match(request).then(cached => {
-    if(cached) return cached;
-    return fetch(request).then(response => {
-      if(response && response.ok){ const copy=response.clone(); caches.open(CACHE_NAME).then(cache=>cache.put(request,copy)); }
-      return response;
-    });
-  }));
+
+  // Everything else (Google Fonts, Google Drive API scripts, etc.):
+  // network-first, fall back to cache if offline. Third-party APIs that
+  // genuinely need connectivity (Drive backup/restore) will simply fail
+  // offline, which is expected — the rest of the app keeps working.
+  event.respondWith(
+    fetch(event.request)
+      .then((res) => {
+        if (res && res.status === 200 && isSameOrigin) {
+          const clone = res.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
+        }
+        return res;
+      })
+      .catch(() => caches.match(event.request))
+  );
 });
