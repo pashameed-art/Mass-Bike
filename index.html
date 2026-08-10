@@ -647,6 +647,10 @@
     </div>
 
     <div class="section-title">☁️ Google Drive</div>
+    <div class="summary-row" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;">
+      <span style="color:var(--ink);font-size:12.5px;">Backup Status</span>
+      <span id="driveStatusBadge" style="font-weight:700;font-size:12.5px;color:var(--ink);">⚪ Never backed up</span>
+    </div>
     <div class="empty" style="background:#fff;border-style:solid;" id="driveConnectBox">
       <span class="big">☁️</span>
       Google Drive connect பண்ணி, ஒரு tap-லேயே Backup / Restore பண்ணலாம்.
@@ -659,7 +663,8 @@
       <span id="driveStatusText">Google Drive Connected</span>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
         <button class="btn btn-primary btn-block" onclick="backupToDriveNow()">☁️⬆️ Backup Now to Drive</button>
-        <button class="btn btn-outline btn-block" onclick="restoreFromDriveNow()">☁️⬇️ Restore from Drive</button>
+        <button class="btn btn-outline btn-block" onclick="restoreFromDriveNow()">☁️⬇️ Restore Latest from Drive</button>
+        <button class="btn btn-outline btn-block" onclick="openDriveBackupHistory()">📜 Backup History</button>
       </div>
     </div>
 
@@ -793,6 +798,17 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeRentModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveRentEntry()">Start Rental</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVE BACKUP HISTORY MODAL -->
+<div class="overlay hide" id="driveHistoryOverlay">
+  <div class="modal">
+    <h3>📜 Backup History</h3>
+    <div id="driveHistoryContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-block" onclick="closeDriveHistory()">Close</button>
     </div>
   </div>
 </div>
@@ -2790,10 +2806,31 @@ function exportCSV(type){
 // ---- GOOGLE DRIVE BACKUP / RESTORE ----
 const GOOGLE_CLIENT_ID = '123737120474-8sqc1sb4p0i9j7s9nq56j4gkd784lm1n.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const DRIVE_BACKUP_FILENAME = 'mass-bike-latest-backup.json';
+const DRIVE_BACKUP_FOLDER_NAME = 'MASS BIKE Backups';
 let gapiInited = false;
 let gisInited = false;
 let driveTokenClient = null;
+let driveFolderId = null;
+
+// ---- BACKUP STATUS INDICATOR (🟢 Synced / 🟡 Pending / 🔴 Failed / ⚪ Never) ----
+function setDriveBackupStatus(status){
+  try{ localStorage.setItem('massBikeV1_driveBackupStatus', status); }catch(e){}
+  renderDriveStatusBadge();
+}
+function renderDriveStatusBadge(){
+  const el = document.getElementById('driveStatusBadge');
+  if(!el) return;
+  const status = localStorage.getItem('massBikeV1_driveBackupStatus') || 'never';
+  const map = {
+    synced:  {icon:'🟢', text:'Synced'},
+    pending: {icon:'🟡', text:'Pending'},
+    failed:  {icon:'🔴', text:'Backup failed'},
+    never:   {icon:'⚪', text:'Never backed up'}
+  };
+  const info = map[status] || map.never;
+  const lastDate = localStorage.getItem('massBikeV1_lastDriveBackupDate');
+  el.textContent = info.icon + ' ' + info.text + (status==='synced' && lastDate ? ' · '+formatDMY(lastDate) : '');
+}
 
 function gapiLoaded(){
   gapi.load('client', async ()=>{
@@ -2836,7 +2873,9 @@ function attemptSilentDriveAutoBackup(){
     document.getElementById('driveActionsBox').classList.remove('hide');
     backupToDriveNow(true);
   };
-  try{ driveTokenClient.requestAccessToken({prompt: ''}); }catch(e){}
+  try{ driveTokenClient.requestAccessToken({prompt: ''}); }catch(e){
+    setDriveBackupStatus(localStorage.getItem('massBikeV1_driveBackupStatus') === 'synced' ? 'pending' : 'never');
+  }
 }
 
 function maybeAutoBackupToday(){
@@ -2902,54 +2941,137 @@ function buildDriveBackupPayload(){
   };
 }
 
+// ---- DRIVE FOLDER MANAGEMENT ----
+async function getOrCreateDriveBackupFolder(){
+  if(driveFolderId) return driveFolderId;
+  const searchRes = await gapi.client.drive.files.list({
+    q: `name='${DRIVE_BACKUP_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id, name)'
+  });
+  let folder = searchRes.result.files && searchRes.result.files[0];
+  if(!folder){
+    const createRes = await gapi.client.drive.files.create({
+      resource: {name: DRIVE_BACKUP_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder'},
+      fields: 'id'
+    });
+    folder = createRes.result;
+  }
+  driveFolderId = folder.id;
+  return driveFolderId;
+}
+
+function driveUploadFile(name, content, folderId, existingFileId){
+  const boundary = 'massbike_boundary_314159';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const closeDelim = "\r\n--" + boundary + "--";
+  const metadata = existingFileId ? {name} : {name, mimeType:'application/json', parents:[folderId]};
+  const multipartBody =
+    delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
+    delimiter + 'Content-Type: application/json\r\n\r\n' + content +
+    closeDelim;
+  const path = existingFileId ? `/upload/drive/v3/files/${existingFileId}` : '/upload/drive/v3/files';
+  const method = existingFileId ? 'PATCH' : 'POST';
+  return gapi.client.request({
+    path, method,
+    params: {uploadType: 'multipart'},
+    headers: {'Content-Type': `multipart/related; boundary="${boundary}"`},
+    body: multipartBody
+  });
+}
+
 async function backupToDriveNow(silent){
   if(!gapi.client.getToken()){ if(!silent) alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
+  setDriveBackupStatus('pending');
   try{
+    const folderId = await getOrCreateDriveBackupFolder();
     const fileContent = JSON.stringify(buildDriveBackupPayload(), null, 2);
-    const searchRes = await gapi.client.drive.files.list({
-      q: `name='${DRIVE_BACKUP_FILENAME}' and trashed=false`,
+
+    // 1) always create a new timestamped snapshot (full version history)
+    const now = new Date();
+    const timeTag = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+    const timestampedName = `backup-${todayStr()}-${timeTag}.json`;
+    await driveUploadFile(timestampedName, fileContent, folderId, null);
+
+    // 2) upsert latest.json inside the same folder for quick one-tap restore
+    const latestSearch = await gapi.client.drive.files.list({
+      q: `name='latest.json' and '${folderId}' in parents and trashed=false`,
       fields: 'files(id, name)'
     });
-    const existing = searchRes.result.files && searchRes.result.files[0];
-    const boundary = 'massbike_boundary_314159';
-    const delimiter = "\r\n--" + boundary + "\r\n";
-    const closeDelim = "\r\n--" + boundary + "--";
-    const metadata = {name: DRIVE_BACKUP_FILENAME, mimeType: 'application/json'};
-    const multipartBody =
-      delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
-      delimiter + 'Content-Type: application/json\r\n\r\n' + fileContent +
-      closeDelim;
+    const latestExisting = latestSearch.result.files && latestSearch.result.files[0];
+    await driveUploadFile('latest.json', fileContent, folderId, latestExisting ? latestExisting.id : null);
 
-    const path = existing ? `/upload/drive/v3/files/${existing.id}` : '/upload/drive/v3/files';
-    const method = existing ? 'PATCH' : 'POST';
-
-    await gapi.client.request({
-      path, method,
-      params: {uploadType: 'multipart'},
-      headers: {'Content-Type': `multipart/related; boundary="${boundary}"`},
-      body: multipartBody
-    });
-    try{ localStorage.setItem('massBikeV1_lastDriveBackupDate', todayStr()); }catch(e){}
-    if(!silent) alert('✅ Google Drive-க்கு Backup ஆயிடுச்சு! / Backed up to Google Drive successfully!');
+    try{
+      localStorage.setItem('massBikeV1_lastDriveBackupDate', todayStr());
+      localStorage.setItem('massBikeV1_lastDriveBackupTime', now.toISOString());
+    }catch(e){}
+    setDriveBackupStatus('synced');
+    if(!silent) alert('✅ Google Drive-க்கு Backup ஆயிடுச்சு! ("MASS BIKE Backups" folder-ல்) / Backed up to Google Drive successfully!');
     else showAutoBackupToast();
   }catch(err){
+    setDriveBackupStatus('failed');
     if(!silent) alert('Backup ஆகல்: ' + (err.result ? err.result.error.message : err.message));
   }
 }
 
-async function restoreFromDriveNow(){
+// ---- BACKUP HISTORY (list + per-entry restore) ----
+async function openDriveBackupHistory(){
   if(!gapi.client.getToken()){ alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
+  document.getElementById('driveHistoryOverlay').classList.remove('hide');
+  document.getElementById('driveHistoryContent').innerHTML = `<div class="empty"><span class="big">⏳</span>Loading...</div>`;
   try{
-    const searchRes = await gapi.client.drive.files.list({
-      q: `name='${DRIVE_BACKUP_FILENAME}' and trashed=false`,
-      fields: 'files(id, name, modifiedTime)'
+    const folderId = await getOrCreateDriveBackupFolder();
+    const listRes = await gapi.client.drive.files.list({
+      q: `'${folderId}' in parents and trashed=false and name!='latest.json'`,
+      fields: 'files(id, name, createdTime)',
+      orderBy: 'createdTime desc',
+      pageSize: 25
     });
-    const file = searchRes.result.files && searchRes.result.files[0];
-    if(!file){
-      alert('Google Drive-ல் backup file கிடைக்கல். முதலில் "Backup Now to Drive" பண்ணுங்க.');
+    const files = listRes.result.files || [];
+    if(files.length === 0){
+      document.getElementById('driveHistoryContent').innerHTML = `<div class="empty"><span class="big">📁</span>No backup history yet</div>`;
       return;
     }
-    const contentRes = await gapi.client.drive.files.get({fileId: file.id, alt: 'media'});
+    document.getElementById('driveHistoryContent').innerHTML = files.map(f=>{
+      const dt = new Date(f.createdTime);
+      const dateStr = formatDMY(dt.toISOString().slice(0,10));
+      const timeStr = dt.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
+      return `<div class="bike-card">
+        <div class="bike-left">
+          <div class="bike-icon">📄</div>
+          <div class="bike-info">
+            <div class="name">${dateStr}</div>
+            <div class="meta">${timeStr}</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="restoreFromDriveNow('${f.id}')">Restore</button>
+      </div>`;
+    }).join('');
+  }catch(err){
+    document.getElementById('driveHistoryContent').innerHTML = `<div class="empty">Error loading history: ${escapeHTML(err.message||'')}</div>`;
+  }
+}
+function closeDriveHistory(){
+  document.getElementById('driveHistoryOverlay').classList.add('hide');
+}
+
+async function restoreFromDriveNow(fileId){
+  if(!gapi.client.getToken()){ alert('முதலில் "Connect Google Drive" பண்ணுங்க'); return; }
+  try{
+    let targetFileId = fileId;
+    if(!targetFileId){
+      const folderId = await getOrCreateDriveBackupFolder();
+      const searchRes = await gapi.client.drive.files.list({
+        q: `name='latest.json' and '${folderId}' in parents and trashed=false`,
+        fields: 'files(id, name, modifiedTime)'
+      });
+      const file = searchRes.result.files && searchRes.result.files[0];
+      if(!file){
+        alert('Google Drive-ல் backup file கிடைக்கல். முதலில் "Backup Now to Drive" பண்ணுங்க.');
+        return;
+      }
+      targetFileId = file.id;
+    }
+    const contentRes = await gapi.client.drive.files.get({fileId: targetFileId, alt: 'media'});
     const data = typeof contentRes.result === 'object' ? contentRes.result : JSON.parse(contentRes.body);
 
     if(!data.bikes || !Array.isArray(data.bikes)){
@@ -2975,12 +3097,17 @@ async function restoreFromDriveNow(){
     ]);
     if(!okRestore) return;
     (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r.invoiceNo));
+    closeDriveHistory();
     alert('✅ Google Drive-லேர்ந்து Restore ஆயிடுச்சு!');
     render();
   }catch(err){
     alert('Restore ஆகல்: ' + (err.result ? err.result.error.message : err.message));
   }
 }
+
+document.getElementById('driveHistoryOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'driveHistoryOverlay') closeDriveHistory();
+});
 
 function downloadBackup(){
   const bikesData = loadBikes();
@@ -3178,6 +3305,7 @@ document.getElementById('dueReminderOverlay').addEventListener('click', (e)=>{
 });
 
 checkDailyDueReminder();
+renderDriveStatusBadge();
 
 // Keep the "Running" time badge on active rentals live while the app stays open
 setInterval(()=>{
@@ -3186,69 +3314,9 @@ setInterval(()=>{
   if(rentalsTabVisible || dashboardTabVisible) render();
 }, 60000);
 
-// Register a service worker that actually caches the app for real offline use
+// Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  const swCode = `
-    const CACHE_NAME = 'massbike-v3-cache';
-    const APP_URL = self.registration.scope;
-
-    self.addEventListener('install', e => {
-      self.skipWaiting();
-      e.waitUntil(
-        caches.open(CACHE_NAME).then(cache =>
-          cache.add(new Request(APP_URL, {cache:'reload'})).catch(()=>{})
-        )
-      );
-    });
-
-    self.addEventListener('activate', e => {
-      e.waitUntil(
-        caches.keys().then(names =>
-          Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))
-        )
-      );
-      self.clients.claim();
-    });
-
-    self.addEventListener('fetch', e => {
-      if(e.request.method !== 'GET') return;
-      const isSameOrigin = e.request.url.startsWith(self.location.origin);
-
-      // App shell (this page): cache-first so it opens instantly offline,
-      // and refresh the cache in the background whenever online.
-      if(e.request.mode === 'navigate' || (isSameOrigin && e.request.url === APP_URL)){
-        e.respondWith(
-          caches.match(APP_URL).then(cached => {
-            const network = fetch(e.request).then(res => {
-              if(res && res.status === 200){
-                caches.open(CACHE_NAME).then(cache => cache.put(APP_URL, res.clone()));
-              }
-              return res;
-            }).catch(() => cached);
-            return cached || network;
-          })
-        );
-        return;
-      }
-
-      // Everything else (icons, fonts, Google API scripts): try network first,
-      // fall back to cache, and never break the page if it fails (e.g. offline
-      // Google Drive scripts — those features simply won't work offline, which
-      // is expected since they need a live connection).
-      e.respondWith(
-        fetch(e.request).then(res => {
-          if(res && res.status === 200 && isSameOrigin){
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-          }
-          return res;
-        }).catch(() => caches.match(e.request))
-      );
-    });
-  `;
-  const swBlob = new Blob([swCode], {type:'application/javascript'});
-  const swUrl = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl).catch(()=>{});
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
