@@ -1090,7 +1090,12 @@
 </div>
 
 <script>
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.2';
+const IDB_DB_NAME = 'MASS_BIKE_PERSISTENT';
+const IDB_DB_VERSION = 1;
+const IDB_STORE = 'snapshots';
+const IDB_SNAPSHOT_KEY = 'latest';
+let idbWriteQueue = Promise.resolve();
 const STORAGE_KEY = 'massBikeV1_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV1_invoiceCounter';
 const RENTAL_KEY = 'massBikeV1_rentals';
@@ -1099,10 +1104,86 @@ function loadBikes(){
   try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
   catch(e){ return []; }
 }
+function openPersistentDB(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)){ reject(new Error('IndexedDB unavailable')); return; }
+    const req = indexedDB.open(IDB_DB_NAME, IDB_DB_VERSION);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error || new Error('IndexedDB open failed'));
+  });
+}
+
+function makePersistentSnapshot(){
+  return {
+    bikes: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') || [],
+    rentals: JSON.parse(localStorage.getItem(RENTAL_KEY) || '[]') || [],
+    expenses: JSON.parse(localStorage.getItem(EXPENSE_KEY) || '[]') || [],
+    maintenance: JSON.parse(localStorage.getItem(MAINT_KEY) || '[]') || [],
+    invoiceCounter: localStorage.getItem(INVOICE_COUNTER_KEY) || '0',
+    savedAt: new Date().toISOString(),
+    appVersion: APP_VERSION
+  };
+}
+
+function savePersistentSnapshot(){
+  const snapshot = makePersistentSnapshot();
+  idbWriteQueue = idbWriteQueue.then(async ()=>{
+    try{
+      const db = await openPersistentDB();
+      await new Promise((resolve,reject)=>{
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(snapshot, IDB_SNAPSHOT_KEY);
+        tx.oncomplete = resolve;
+        tx.onerror = ()=>reject(tx.error || new Error('IndexedDB write failed'));
+      });
+      db.close();
+    }catch(e){ /* localStorage remains the primary live store */ }
+  }).catch(()=>{});
+  return idbWriteQueue;
+}
+
+async function readPersistentSnapshot(){
+  try{
+    const db = await openPersistentDB();
+    const snapshot = await new Promise((resolve,reject)=>{
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(IDB_SNAPSHOT_KEY);
+      req.onsuccess = ()=>resolve(req.result || null);
+      req.onerror = ()=>reject(req.error || new Error('IndexedDB read failed'));
+    });
+    db.close();
+    return snapshot;
+  }catch(e){ return null; }
+}
+
+async function recoverPersistentDataIfNeeded(){
+  // Only recover when the live localStorage data has disappeared. Never overwrite
+  // healthy live data with an older snapshot.
+  const hasLiveData = ['massBikeV1_bikes','massBikeV1_rentals','massBikeV1_expenses','massBikeV1_maintenance']
+    .some(k => { try { const v=JSON.parse(localStorage.getItem(k) || 'null'); return Array.isArray(v) && v.length > 0; } catch(e){ return false; } });
+  if(hasLiveData) return false;
+  const snapshot = await readPersistentSnapshot();
+  if(!snapshot || !Array.isArray(snapshot.bikes) || snapshot.bikes.length === 0) return false;
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot.bikes));
+    localStorage.setItem(RENTAL_KEY, JSON.stringify(snapshot.rentals || []));
+    localStorage.setItem(EXPENSE_KEY, JSON.stringify(snapshot.expenses || []));
+    localStorage.setItem(MAINT_KEY, JSON.stringify(snapshot.maintenance || []));
+    if(snapshot.invoiceCounter) localStorage.setItem(INVOICE_COUNTER_KEY, String(snapshot.invoiceCounter));
+    localStorage.setItem('massBikeV1_installed', '1');
+    return true;
+  }catch(e){ return false; }
+}
+
 function safeSet(key, value){
   try{
     localStorage.setItem(key, JSON.stringify(value));
     mirrorAutoBackup();
+    savePersistentSnapshot();
     return true;
   }catch(e){
     alert('⚠️ Save பண்ண முடியலை! Storage full-ஆ இருக்கலாம். Data loss ஆகாம இருக்க, Backup tab-க்கு போய் உடனே Download Backup File பண்ணி பாருங்க.\n\n⚠️ Save failed! Storage may be full. Please go to Backup tab and download a backup immediately.');
@@ -1118,6 +1199,7 @@ function transactionalSet(entries){
   try{
     entries.forEach(e => localStorage.setItem(e.key, JSON.stringify(e.value)));
     mirrorAutoBackup();
+    savePersistentSnapshot();
     return true;
   }catch(err){
     snapshot.forEach(s => {
@@ -1303,8 +1385,9 @@ function updateFilterButtonStyles(active){
   });
 }
 
-// self-heal: if primary bike data is empty but an auto-backup snapshot exists, restore from it
-// (prevents accidentally overwriting real data with demo seed data after a storage hiccup)
+// self-heal from the old localStorage safety copy when the live bike data is empty.
+// The newer IndexedDB recovery runs after the page initializes and only when live
+// data is genuinely missing, so healthy data is never overwritten.
 if(bikes.length === 0){
   try{
     const backup = JSON.parse(localStorage.getItem('massBikeV1_autobackup'));
@@ -1314,9 +1397,8 @@ if(bikes.length === 0){
       localStorage.setItem(EXPENSE_KEY, JSON.stringify(backup.expenses || []));
       localStorage.setItem(MAINT_KEY, JSON.stringify(backup.maintenance || []));
       bikes = backup.bikes;
-      alert('Data automatically restored from safety backup (dated ' + (backup.savedAt||'').slice(0,10) + ').');
     }
-  }catch(e){ /* no valid backup available, fall through to normal seed */ }
+  }catch(e){ /* IndexedDB recovery below is the next safety layer */ }
 }
 
 // seed sample data ONLY on a genuine first install (never repeats after that,
@@ -3188,7 +3270,18 @@ function restoreBackup(event){
   reader.readAsText(file);
 }
 
-render();
+// Persistent startup recovery: if browser/site storage was cleared, recover the
+// last known dataset from IndexedDB and reload once so every screen starts from it.
+// This removes the need for a manual daily Restore.
+(async function(){
+  const recovered = await recoverPersistentDataIfNeeded();
+  if(recovered){
+    location.reload();
+    return;
+  }
+  savePersistentSnapshot();
+  render();
+})();
 
 // ---- In-app Daily Due Reminder (replaces browser notifications) ----
 function getDueSummary(){
@@ -3313,6 +3406,11 @@ setInterval(()=>{
   const dashboardTabVisible = !document.getElementById('tab-dashboard').classList.contains('hide');
   if(rentalsTabVisible || dashboardTabVisible) render();
 }, 60000);
+
+
+// Keep the latest dataset in IndexedDB when the app is backgrounded or closed.
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') savePersistentSnapshot(); });
+window.addEventListener('pagehide', ()=>{ savePersistentSnapshot(); });
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
