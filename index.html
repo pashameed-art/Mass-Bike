@@ -1090,7 +1090,7 @@
 </div>
 
 <script>
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.5';
 const IDB_DB_NAME = 'MASS_BIKE_PERSISTENT';
 const IDB_DB_VERSION = 1;
 const IDB_STORE = 'snapshots';
@@ -1951,7 +1951,7 @@ function rentalCardHTML(r){
            <button class="btn btn-outline btn-sm" onclick="openAddPaymentModal(${r.id})">💰 Payment</button>
            <button class="btn btn-outline btn-sm" onclick="sendWhatsAppReminder(${r.id})">📲 Remind</button>
            <button class="btn btn-outline btn-sm" onclick="callCustomer(${r.id})">📞 Call</button>
-           <button class="btn btn-danger btn-sm" onclick="deleteTestRentalAndBike(${r.id})">🗑️ Test Delete</button>`
+           ${cardBike && normalizePlate(cardBike.plate) === 'TN76AD2195' ? `<button class="btn btn-danger btn-sm" onclick="deleteTN76AD2195(${r.id})">🗑️ Delete</button>` : ''}`
         : `<button class="btn btn-outline btn-sm" onclick="editReturnedRental(${r.id})">✏️ Edit</button>`}
       <button class="btn btn-outline btn-sm" onclick="openReceipt(${r.id})">🧾 Receipt</button>
     </div>
@@ -2091,50 +2091,35 @@ function deleteBike(id){
   render();
 }
 
-// Delete a rental created only for testing. This is intentionally protected by
-// an exact confirmation phrase so a real active rental is not removed by mistake.
-function deleteTestRentalAndBike(rentalId){
+// Delete only the specific test bike requested by the owner: TN76AD2195.
+// This is intentionally restricted to this exact vehicle number.
+function normalizePlate(plate){
+  return String(plate || '').replace(/\s+/g,'').toUpperCase();
+}
+
+function deleteTN76AD2195(rentalId){
   const rentals = loadRentals();
   const rental = rentals.find(r => r.id === rentalId);
   if(!rental) return;
-  if(rental.status !== 'active'){
-    alert('This option is only for an active test rental.');
+
+  const bike = loadBikes().find(b => b.id === rental.bikeId);
+  if(!bike || normalizePlate(bike.plate) !== 'TN76AD2195'){
+    alert('இந்த Delete option TN76AD2195-க்கு மட்டும்.');
     return;
   }
 
-  const bike = loadBikes().find(b => b.id === rental.bikeId);
-  const bikeLabel = bike ? `${bike.name} (${bike.plate})` : (rental.bikeName || 'Bike');
-  const typed = prompt(
-    `⚠️ TEST RENTAL DELETE\n\nCustomer: ${rental.customerName}\nBike: ${bikeLabel}\n\nThis permanently deletes this ACTIVE rental.\nIf this is a real rental, tap Cancel.\n\nType DELETE TEST to continue:`
-  );
-  if(typed !== 'DELETE TEST') return;
-
-  const otherRentalsForBike = rentals.filter(r => r.id !== rentalId && r.bikeId === rental.bikeId);
-  const updatedRentals = rentals.filter(r => r.id !== rentalId);
-  const updatedBikes = bike && otherRentalsForBike.length === 0
-    ? loadBikes().filter(b => b.id !== rental.bikeId)
-    : loadBikes().map(b => b.id === rental.bikeId ? {...b, status:'available'} : b);
-
-  const ok = transactionalSet([
-    {key: RENTAL_KEY, value: updatedRentals},
-    {key: STORAGE_KEY, value: updatedBikes}
-  ]);
+  const ok = confirm(`TN76AD2195 – Hameed\n\nஇந்த TEST rental மற்றும் இந்த bike-ஐ மட்டும் நிரந்தரமாக delete செய்யவா?\n\n⚠️ Rental + Bike இரண்டும் delete ஆகும்.`);
   if(!ok) return;
 
-  alert(
-    bike && otherRentalsForBike.length === 0
-      ? 'Test rental மற்றும் அதனுடன் இணைந்த bike delete செய்யப்பட்டது. / Test rental and its bike were deleted.'
-      : 'Test rental delete செய்யப்பட்டது. Bike பாதுகாப்புக்காக வைத்திருக்கப்படுகிறது; மற்ற rental records உள்ளன. / Test rental deleted. The bike was kept because other rental records exist.'
-  );
+  // This vehicle is the requested test entry. Remove only records linked to this bike.
+  const updatedRentals = rentals.filter(r => r.bikeId !== bike.id);
+  const updatedBikes = loadBikes().filter(b => b.id !== bike.id);
+  saveRentals(updatedRentals);
+  saveBikes(updatedBikes);
   render();
+  alert('TN76AD2195 மற்றும் அதனுடைய rental delete செய்யப்பட்டது.');
 }
 
-document.getElementById('modalOverlay').addEventListener('click', (e)=>{
-  if(e.target.id === 'modalOverlay') closeModal();
-});
-
-// ---- RENT ENTRY ----
-// ---- RECORD PAYMENT (for ongoing / active rentals) ----
 function openAddPaymentModal(rentalId){
   const r = loadRentals().find(x=>x.id===rentalId);
   if(!r) return;
