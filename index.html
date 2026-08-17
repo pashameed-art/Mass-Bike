@@ -2928,22 +2928,12 @@ function gisLoaded(){
     callback: '' // set per-request
   });
   gisInited = true;
-  // if the person connected Drive before, try a silent (no-popup) token refresh
-  // to auto-backup once per day — works only if the browser still has an active
-  // Google session with prior consent; otherwise this just quietly does nothing
-  // and the person can tap "Connect Google Drive" manually as usual.
-  try{
-    if(localStorage.getItem('massBikeV1_driveEverConnected') === '1' && gapiInited){
-      attemptSilentDriveAutoBackup();
-    } else if(localStorage.getItem('massBikeV1_driveEverConnected') === '1'){
-      const waitForGapi = setInterval(()=>{
-        if(gapiInited){
-          clearInterval(waitForGapi);
-          attemptSilentDriveAutoBackup();
-        }
-      }, 300);
-    }
-  }catch(e){}
+
+  // v3.3: DO NOT request a Google OAuth token automatically on app startup.
+  // Google's token client may show the account chooser even with prompt:""
+  // when the browser needs fresh user interaction. That caused the daily
+  // "Choose an account" popup. Drive remains available through the explicit
+  // Connect / Backup buttons, while local data works without Google sign-in.
 }
 
 function attemptSilentDriveAutoBackup(){

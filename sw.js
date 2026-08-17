@@ -2,7 +2,7 @@
 // Proper same-origin file (not a Blob URL) so caching, versioning, and updates
 // work exactly the way a normal PWA service worker is supposed to.
 
-const CACHE_VERSION = 'massbike-v3.2';
+const CACHE_VERSION = 'massbike-v3.3';
 const APP_SHELL = [
   './',
   './index.html',
