@@ -1,5 +1,5 @@
 // MASS BIKE V4.1 — Service Worker
-const CACHE_VERSION = 'massbike-v4.1';
+const CACHE_VERSION = 'massbike-v4.2';
 const APP_SHELL = ['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 
 self.addEventListener('install', event => {

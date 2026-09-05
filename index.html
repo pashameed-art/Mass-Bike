@@ -621,6 +621,8 @@
       <div id="repFineList"></div>
       <div class="section-title">💵 Cash Collected Breakdown</div>
       <div id="repCashBreakdown"></div>
+      <div class="section-title">🛡️ Data & Rental Audit</div>
+      <div id="repAudit"></div>
     </div>
     <div class="addbar" style="display:flex;gap:10px;margin-top:18px;">
       <button class="btn btn-outline" style="flex:1;" onclick="downloadReportPDF()">📄 Download PDF</button>
@@ -695,7 +697,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.1</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.2</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1058,7 +1060,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.2';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1591,6 +1593,57 @@ function render(){
         }).join('')}
       </div>`
     : '';
+
+  // V4.2 rental/data integrity audit — read-only; never changes stored data
+  const auditRentals = loadRentals();
+  const auditIssues = [];
+  let auditGross = 0, auditCash = 0, auditPending = 0, auditOutstanding = 0;
+  auditRentals.forEach(r=>{
+    const paid = totalPaidSoFar(r);
+    const received = r.status === 'returned' ? (r.received||0) : 0;
+    const billed = netRentalIncome(r);
+    auditGross += r.status === 'returned' ? billed : 0;
+    auditCash += paid + received;
+    if(r.status === 'active'){
+      const days = calcDays(r.startDate, todayStr());
+      const expected = roundMoney(days * (r.rate||0));
+      const due = roundMoney(Math.max(0, expected - paid));
+      auditPending += due;
+      if((r.balance||0) !== 0) auditIssues.push(`${r.bikeName||'Bike'} · active rental has stored balance ₹${r.balance}`);
+    } else if(r.status === 'returned'){
+      const expectedBalance = roundMoney(billed - paid - received);
+      const storedBalance = roundMoney(r.balance||0);
+      if(Math.abs(expectedBalance - storedBalance) > 0.01){
+        auditIssues.push(`${r.bikeName||'Bike'} · ${r.customerName||'Customer'}: balance mismatch (stored ₹${storedBalance}, expected ₹${expectedBalance})`);
+      }
+      if(storedBalance > 0) auditOutstanding += storedBalance;
+    } else {
+      auditIssues.push(`${r.bikeName||'Bike'} · unknown rental status: ${r.status||'missing'}`);
+    }
+    if((r.advance||0) < 0 || (r.received||0) < 0 || (r.fine||0) < 0 || (r.discount||0) < 0){
+      auditIssues.push(`${r.bikeName||'Bike'} · negative amount field detected`);
+    }
+  });
+  auditGross = roundMoney(auditGross);
+  auditCash = roundMoney(auditCash);
+  auditPending = roundMoney(auditPending);
+  auditOutstanding = roundMoney(auditOutstanding);
+  const auditExpenses = roundMoney(loadExpenses().reduce((s,e)=>s+(e.amount||0),0) + loadMaintList().reduce((s,m)=>s+(m.cost||0),0));
+  const auditProfit = roundMoney(auditGross - auditExpenses);
+  const auditDashboardMatch = [
+    ['Gross Revenue', auditGross, allTimeIncome],
+    ['Cash Collected', auditCash, cashCollected],
+    ['Pending Receivable', auditPending, pendingReceivable],
+    ['Expenses', auditExpenses, allTimeExpAll],
+    ['Net Profit', auditProfit, allTimeNet],
+    ['Outstanding', auditOutstanding, outstandingAmount]
+  ];
+  auditDashboardMatch.forEach(([label,a,b])=>{
+    if(Math.abs(a-b)>0.01) auditIssues.push(`${label}: dashboard ₹${b} / audit ₹${a}`);
+  });
+  document.getElementById('repAudit').innerHTML = auditIssues.length
+    ? `<div class="summary-card" style="border:1px solid var(--rust);"><div class="summary-row"><span style="font-weight:800;color:var(--rust);">⚠️ ${auditIssues.length} issue(s) found</span><span></span></div>${auditIssues.map(x=>`<div style="padding:8px 0;border-top:1px solid var(--line);font-size:12px;">${escapeHTML(x)}</div>`).join('')}</div>`
+    : `<div class="summary-card" style="border:1px solid rgba(21,120,83,.35);"><div class="summary-row"><span style="font-weight:800;color:var(--green);">✅ Audit Passed</span><span style="font-size:12px;color:#6f786f;">Read-only check</span></div><div style="font-size:11px;color:#6f786f;line-height:1.5;">Rental balances, dashboard totals, cash collection, receivables, expenses and profit are internally consistent.</div></div>`;
 
   // reports summary (respects selected date filter)
   const inRange = (dateStr)=>{
