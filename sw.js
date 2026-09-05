@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'massbike-v4.4';
+const CACHE_VERSION = 'massbike-v4.5';
 const APP_SHELL = ['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_VERSION).then(cache => cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
