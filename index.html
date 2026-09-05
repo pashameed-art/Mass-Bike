@@ -533,7 +533,7 @@
       <div class="summary-row"><span>⚠️ Outstanding Amount</span><span class="amt amt-neg" id="dashOutstanding">₹0</span></div>
     </div>
     <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">
-      Gross Revenue = Returned rentals-ன் billed total · Cash Collected = கையில வந்த பணம் (Active+Returned) · Pending Receivable = Active rentals-ல் இன்னும் வராத பணம் · Net Profit = Cash Collected − Expenses · Outstanding = Returned bikes-ல் இன்னும் கட்டாத balance
+      Gross Revenue = Returned rentals-ன் billed total · Cash Collected = Advance + recorded payments + Returned-ல் received · Pending Receivable = Active rentals-ல் இன்னும் வராத rent · Net Profit = Cash Collected − Expenses · Outstanding = Returned rentals-ல் balance
     </div>
     <div id="longPendingSection"></div>
     <div id="returnedPendingSection"></div>
@@ -695,7 +695,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.1</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1058,10 +1058,10 @@
 </div>
 
 <script>
-const APP_VERSION = '4.0';
-const STORAGE_KEY = 'massBikeV1_bikes';
-const INVOICE_COUNTER_KEY = 'massBikeV1_invoiceCounter';
-const RENTAL_KEY = 'massBikeV1_rentals';
+const APP_VERSION = '4.1';
+const STORAGE_KEY = 'massBikeV4_bikes';
+const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
+const RENTAL_KEY = 'massBikeV4_rentals';
 
 function loadBikes(){
   try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
@@ -1107,7 +1107,7 @@ function mirrorAutoBackup(){
       maintenance: JSON.parse(localStorage.getItem(MAINT_KEY)) || [],
       savedAt: new Date().toISOString()
     };
-    localStorage.setItem('massBikeV1_autobackup', JSON.stringify(snapshot));
+    localStorage.setItem('massBikeV4_autobackup', JSON.stringify(snapshot));
   }catch(e){ /* best-effort only, never block the main save */ }
 }
 function saveBikes(bikes){
@@ -1204,8 +1204,8 @@ function buildAndDownloadPdf(filename, lines){
   URL.revokeObjectURL(url);
 }
 
-const EXPENSE_KEY = 'massBikeV1_expenses';
-const MAINT_KEY = 'massBikeV1_maintenance';
+const EXPENSE_KEY = 'massBikeV4_expenses';
+const MAINT_KEY = 'massBikeV4_maintenance';
 
 function loadExpenses(){
   try{ return JSON.parse(localStorage.getItem(EXPENSE_KEY)) || []; }
@@ -1275,7 +1275,7 @@ function updateFilterButtonStyles(active){
 // (prevents accidentally overwriting real data with demo seed data after a storage hiccup)
 if(bikes.length === 0){
   try{
-    const backup = JSON.parse(localStorage.getItem('massBikeV1_autobackup'));
+    const backup = JSON.parse(localStorage.getItem('massBikeV4_autobackup'));
     if(backup && Array.isArray(backup.bikes) && backup.bikes.length > 0){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.bikes));
       localStorage.setItem(RENTAL_KEY, JSON.stringify(backup.rentals || []));
@@ -1289,7 +1289,31 @@ if(bikes.length === 0){
 
 // seed sample data ONLY on a genuine first install (never repeats after that,
 // even if the user later deletes every bike — that's a real empty state, not first-run)
-const INSTALLED_FLAG_KEY = 'massBikeV1_installed';
+const INSTALLED_FLAG_KEY = 'massBikeV4_installed';
+
+// V4.1 DATA SAFETY: one-time migration from the previous Mass Bike namespace.
+// Only Mass Bike's old massBikeV1_* keys are read; no Sale Profit Book keys are touched.
+(function migrateMassBikeV1ToV4(){
+  const pairs = [
+    ['massBikeV1_bikes', STORAGE_KEY],
+    ['massBikeV1_rentals', RENTAL_KEY],
+    ['massBikeV1_expenses', EXPENSE_KEY],
+    ['massBikeV1_maintenance', MAINT_KEY],
+    ['massBikeV1_invoiceCounter', INVOICE_COUNTER_KEY]
+  ];
+  try{
+    pairs.forEach(([oldKey,newKey])=>{
+      if(localStorage.getItem(newKey) === null){
+        const oldValue = localStorage.getItem(oldKey);
+        if(oldValue !== null) localStorage.setItem(newKey, oldValue);
+      }
+    });
+    if(localStorage.getItem('massBikeV4_installed') === null){
+      localStorage.setItem('massBikeV4_installed', JSON.stringify({version:'4.1', migratedAt:new Date().toISOString()}));
+    }
+  }catch(e){ /* migration is best-effort; normal app loading remains intact */ }
+})();
+
 if(bikes.length === 0 && !localStorage.getItem(INSTALLED_FLAG_KEY)){
   bikes = [
     {id: Date.now()+1, name:'Activa 6G', plate:'TN 63 AB 1234', status:'available', rate:300},
@@ -2732,7 +2756,7 @@ function resetAllData(){
   saveMaintList([]);
   try{
     localStorage.removeItem(INVOICE_COUNTER_KEY);
-    localStorage.removeItem('massBikeV1_autobackup');
+    localStorage.removeItem('massBikeV4_autobackup');
   }catch(e){}
 
   alert('எல்லா data-வும் நீக்கப்பட்டது. Fresh-ஆ ஆரம்பிக்கலாம்! / All data cleared. You can start fresh now!');
@@ -2876,7 +2900,7 @@ function getDueSummary(){
 }
 
 function checkDailyDueReminder(){
-  const lastShown = localStorage.getItem('massBikeV1_lastReminderDate');
+  const lastShown = localStorage.getItem('massBikeV4_lastReminderDate');
   if(lastShown === todayStr()) return; // show at most once per day
 
   const {longPending, serviceDue, currentBikes} = getDueSummary();
@@ -2924,7 +2948,7 @@ function checkDailyDueReminder(){
 
   document.getElementById('dueReminderContent').innerHTML = html;
   document.getElementById('dueReminderOverlay').classList.remove('hide');
-  try{ localStorage.setItem('massBikeV1_lastReminderDate', todayStr()); }catch(e){}
+  try{ localStorage.setItem('massBikeV4_lastReminderDate', todayStr()); }catch(e){}
 }
 
 function closeDueReminder(){
