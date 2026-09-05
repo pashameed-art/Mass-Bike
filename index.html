@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V3</title>
+<title>MASS BIKE V4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -32,11 +32,13 @@
     font-family:'Poppins',sans-serif;
     background:var(--paper);
     background-image:
-      radial-gradient(circle at 1px 1px, rgba(11,61,62,0.05) 1px, transparent 0);
-    background-size:20px 20px;
+      radial-gradient(circle at 1px 1px, rgba(4,106,69,0.06) 1px, transparent 0);
+    background-size:22px 22px;
     color:var(--ink);
     -webkit-tap-highlight-color:transparent;
+    animation:pageIn 0.35s ease;
   }
+  @keyframes pageIn{from{opacity:0;}to{opacity:1;}}
   h1,h2,h3,.brand,.tabbar button,.stat .num{font-family:'Baloo Thambi 2',sans-serif;}
 
   header{
@@ -46,6 +48,7 @@
     position:relative;
     overflow:hidden;
     box-shadow:0 4px 24px rgba(0,0,0,0.35);
+    border-bottom:1px solid rgba(212,175,55,0.25);
   }
   header::after{
     content:"";
@@ -87,14 +90,14 @@
   .badge{
     width:34px;height:34px;
     border-radius:9px;
-    background:var(--mustard);
+    background:linear-gradient(155deg, #E4C158, var(--mustard) 60%, var(--mustard-dark));
     color:var(--teal-dark);
     display:inline-flex;
     align-items:center;justify-content:center;
     font-size:14px;
     font-weight:800;
     letter-spacing:0;
-    box-shadow:0 3px 8px rgba(0,0,0,0.2);
+    box-shadow:0 4px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.5);
     flex-shrink:0;
   }
   .brand .plate{
@@ -135,7 +138,7 @@
     padding:11px 6px;
     border-radius:11px;
     font-size:12.5px;
-    font-weight:600;
+    font-weight:800;
     cursor:pointer;
     transition:background 0.2s ease, color 0.2s ease, transform 0.1s ease;
   }
@@ -171,45 +174,49 @@
 
   .fab{
     position:fixed;
-    right:20px;
-    bottom:28px;
-    width:58px;height:58px;
+    left:16px;
+    bottom:20px;
+    width:48px;height:48px;
+    opacity:0.88;
+    backdrop-filter:blur(2px);
     border-radius:50%;
     background:linear-gradient(135deg, var(--mustard), var(--mustard-dark));
     color:var(--teal-dark);
     border:none;
-    font-size:28px;
+    font-size:22px;
     font-weight:800;
     line-height:1;
     display:flex;
     align-items:center;
     justify-content:center;
-    box-shadow:0 8px 24px rgba(212,175,55,0.5), 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow:0 6px 18px rgba(212,175,55,0.4), 0 2px 6px rgba(0,0,0,0.25);
     z-index:40;
     cursor:pointer;
-    transition:transform 0.15s ease, box-shadow 0.15s ease;
+    transition:transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
     animation:fabPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
   }
-  .fab:active{transform:scale(0.9);}
+  .fab:active{transform:scale(0.9);opacity:1;}
   @keyframes fabPop{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
   .stat .num{font-size:26px;font-weight:800;color:var(--teal);letter-spacing:-0.5px;}
   .stat .label{font-size:10.5px;color:#6b6355;margin-top:4px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;}
 
   .section-title{
-    font-size:17px;
+    font-size:16.5px;
     font-weight:700;
-    margin:24px 0 10px;
+    letter-spacing:0.2px;
+    margin:26px 0 11px;
     color:var(--teal);
     display:flex;
     align-items:center;
-    gap:8px;
+    gap:9px;
   }
   .section-title::before{
     content:"";
-    width:4px;height:16px;
-    background:var(--mustard);
+    width:4px;height:18px;
+    background:linear-gradient(180deg, var(--mustard), var(--mustard-dark));
     border-radius:3px;
     display:inline-block;
+    box-shadow:0 0 8px rgba(212,175,55,0.4);
   }
 
   .searchbar{
@@ -237,12 +244,17 @@
     font-family:'Poppins',sans-serif;
     transition:transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
-  .btn-primary{background:var(--mustard);color:var(--teal-dark);box-shadow:0 3px 10px rgba(232,169,61,0.35);}
-  .btn-primary:active{background:var(--mustard-dark);transform:scale(0.97);}
-  .btn-outline{background:#fff;color:var(--teal);border:1.5px solid var(--teal);transition:border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;}
+  .btn-primary{
+    background:linear-gradient(155deg, #E4C158, var(--mustard) 45%, var(--mustard-dark));
+    color:var(--teal-dark);
+    box-shadow:0 4px 14px rgba(212,175,55,0.4), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.1);
+    text-shadow:0 1px 0 rgba(255,255,255,0.2);
+  }
+  .btn-primary:active{background:var(--mustard-dark);transform:scale(0.97);box-shadow:0 2px 6px rgba(212,175,55,0.35);}
+  .btn-outline{background:#fff;color:var(--teal);border:1.5px solid var(--teal);transition:border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
   .btn-outline:hover{border-color:var(--mustard);}
   .btn-outline:active{background:var(--paper);transform:scale(0.97);}
-  .btn-danger{background:var(--rust);color:#fff;box-shadow:0 3px 10px rgba(178,58,46,0.3);}
+  .btn-danger{background:linear-gradient(155deg, #D4544A, var(--rust));color:#fff;box-shadow:0 4px 12px rgba(192,57,43,0.35), inset 0 1px 0 rgba(255,255,255,0.15);}
   .btn-danger:active{transform:scale(0.97);}
   .btn-sm{padding:8px 13px;font-size:12.5px;border-radius:10px;}
   .btn-block{width:100%;}
@@ -274,7 +286,7 @@
     display:flex;align-items:center;justify-content:center;
     font-size:22px;
     flex-shrink:0;
-    box-shadow:0 3px 8px rgba(6,40,39,0.25);
+    box-shadow:0 3px 10px rgba(0,0,0,0.3), 0 0 0 1.5px rgba(212,175,55,0.25);
   }
   .bike-info .name{font-weight:700;font-size:15px;color:var(--ink);}
   .bike-info .plate-no{
@@ -472,7 +484,7 @@
 
 <header>
   <div class="eyebrow">BIKE RENTAL MANAGEMENT</div>
-  <div class="brand"><span class="badge">MB</span> MASS BIKE <span class="plate">V3</span></div>
+  <div class="brand"><span class="badge">MB</span> MASS BIKE</div>
   <div class="subtitle">Kadayanallur · Tamil Nadu</div>
 </header>
 
@@ -511,9 +523,17 @@
       <div class="stat" style="padding:12px 4px 14px;"><div class="stat-icon" style="font-size:15px;">📅</div><div class="num" id="statMonthIncome" style="font-size:16px;">₹0</div><div class="label" style="font-size:9px;">This Month</div></div>
     </div>
     <div class="summary-card" style="margin-bottom:16px;">
-      <div class="summary-row"><span>Total Income (All Time)</span><span class="amt amt-pos" id="dashIncome">₹0</span></div>
-      <div class="summary-row"><span>Total Expense (All Time)</span><span class="amt amt-neg" id="dashExpense">₹0</span></div>
-      <div class="summary-row"><span>Total Profit (All Time)</span><span class="amt" id="dashProfit">₹0</span></div>
+      <div class="summary-row"><span>Gross Rental Revenue</span><span class="amt amt-pos" id="dashGrossRevenue">₹0</span></div>
+      <div class="summary-row"><span>💵 Cash Collected</span><span class="amt amt-pos" id="dashCashCollected">₹0</span></div>
+      <div class="summary-row"><span>⏳ Pending Receivable</span><span class="amt amt-neg" id="dashPendingReceivable">₹0</span></div>
+      <div class="summary-row"><span>Total Expenses</span><span class="amt amt-neg" id="dashExpense">₹0</span></div>
+      <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.2);margin-top:4px;padding-top:10px;">
+        <span style="font-weight:700;">Net Profit</span><span class="amt" id="dashProfit">₹0</span>
+      </div>
+      <div class="summary-row"><span>⚠️ Outstanding Amount</span><span class="amt amt-neg" id="dashOutstanding">₹0</span></div>
+    </div>
+    <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">
+      Gross Revenue = Returned rentals-ன் billed total · Cash Collected = கையில வந்த பணம் (Active+Returned) · Pending Receivable = Active rentals-ல் இன்னும் வராத பணம் · Net Profit = Cash Collected − Expenses · Outstanding = Returned bikes-ல் இன்னும் கட்டாத balance
     </div>
     <div id="longPendingSection"></div>
     <div id="returnedPendingSection"></div>
@@ -599,6 +619,8 @@
       <div id="repBikeList"></div>
       <div class="section-title">Bike-wise Fines</div>
       <div id="repFineList"></div>
+      <div class="section-title">💵 Cash Collected Breakdown</div>
+      <div id="repCashBreakdown"></div>
     </div>
     <div class="addbar" style="display:flex;gap:10px;margin-top:18px;">
       <button class="btn btn-outline" style="flex:1;" onclick="downloadReportPDF()">📄 Download PDF</button>
@@ -624,10 +646,12 @@
       <div class="summary-row"><span>Maintenance Records</span><span class="amt" id="bkMaint">0</span></div>
     </div>
 
+    <div class="section-title">☁️ Google Drive</div>
     <div class="section-title">Backup Data</div>
+    <div class="meta" style="margin:6px 0 10px;color:var(--teal);font-weight:700;">💾 Mass Bike Backup — Download / Restore File மட்டும். Google Drive Backup ID இல்லை.</div>
     <div class="empty" style="background:#fff;border-style:solid;">
       <span class="big">⬇️</span>
-      Download all your MASS BIKE data as a backup file. No Backup ID or Google Drive is required.
+      Download all your data as a backup file. Keep it safe on your phone or Google Drive.
       <div style="margin-top:14px;">
         <button class="btn btn-primary btn-block" onclick="downloadBackup()">Download Backup File</button>
       </div>
@@ -636,7 +660,7 @@
     <div class="section-title">Restore Data</div>
     <div class="empty" style="background:#fff;border-style:solid;">
       <span class="big">⬆️</span>
-      Restore from a previously downloaded MASS BIKE backup file. This will replace all current data.
+      Restore from a previously downloaded backup file. This will replace all current data.
       <div style="margin-top:14px;">
         <input type="file" id="restoreFileInput" accept="application/json" style="display:none" onchange="restoreBackup(event)">
         <button class="btn btn-outline btn-block" onclick="document.getElementById('restoreFileInput').click()">Choose Backup File</button>
@@ -672,7 +696,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V3</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -733,7 +757,7 @@
     </div>
     <div class="field">
       <label>Customer Phone</label>
-      <input type="tel" id="rPhone" placeholder="e.g. 9876543210" maxlength="10" inputmode="numeric">
+      <input type="tel" id="rPhone" placeholder="e.g. 9876543210" maxlength="14" inputmode="numeric">
     </div>
     <div class="field">
       <label>Start Date</label>
@@ -817,6 +841,10 @@
     <div class="field">
       <label>Bike / Customer</label>
       <input type="text" id="editReturnedInfo" disabled>
+    </div>
+    <div class="field">
+      <label>Already Paid So Far (Advance + Payments) (₹)</label>
+      <input type="text" id="editReturnedPaid" disabled>
     </div>
     <div class="field">
       <label>Total Amount (₹)</label>
@@ -1031,7 +1059,7 @@
 </div>
 
 <script>
-const APP_VERSION = '3.1';
+const APP_VERSION = '4.0';
 const STORAGE_KEY = 'massBikeV1_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV1_invoiceCounter';
 const RENTAL_KEY = 'massBikeV1_rentals';
@@ -1047,6 +1075,27 @@ function safeSet(key, value){
     return true;
   }catch(e){
     alert('⚠️ Save பண்ண முடியலை! Storage full-ஆ இருக்கலாம். Data loss ஆகாம இருக்க, Backup tab-க்கு போய் உடனே Download Backup File பண்ணி பாருங்க.\n\n⚠️ Save failed! Storage may be full. Please go to Backup tab and download a backup immediately.');
+    return false;
+  }
+}
+// Atomically write multiple keys together (e.g. a rental record + the linked bike's
+// status). If any write in the group fails partway through, every key already written
+// in this call is rolled back to its previous value, so the rental and bike status can
+// never end up out of sync with each other.
+function transactionalSet(entries){
+  const snapshot = entries.map(e => ({key: e.key, prev: localStorage.getItem(e.key)}));
+  try{
+    entries.forEach(e => localStorage.setItem(e.key, JSON.stringify(e.value)));
+    mirrorAutoBackup();
+    return true;
+  }catch(err){
+    snapshot.forEach(s => {
+      try{
+        if(s.prev === null) localStorage.removeItem(s.key);
+        else localStorage.setItem(s.key, s.prev);
+      }catch(rollbackErr){ /* best effort */ }
+    });
+    alert('⚠️ Save பண்ண முடியலை! Storage full-ஆ இருக்கலாம். மாற்றங்கள் rollback ஆகி, பழைய நிலைக்கு திரும்பியுள்ளது — data inconsistent ஆகாது.\n\n⚠️ Save failed! Changes were rolled back to the previous state so your rental and bike records stay consistent. Please free up storage (Backup tab) and try again.');
     return false;
   }
 }
@@ -1073,8 +1122,31 @@ function saveRentals(rentals){
   safeSet(RENTAL_KEY, rentals);
 }
 function todayStr(){
-  return new Date().toISOString().slice(0,10);
+  // Always compute today's date in IST (UTC+5:30), regardless of the device's own
+  // timezone setting. Date.now()/getTime() is always an absolute UTC timestamp, so
+  // shifting by the fixed IST offset and reading UTC getters gives the correct
+  // India calendar date even right around midnight (avoids the old UTC-slice bug
+  // where dates could show as "yesterday" for ~5.5 hours after IST midnight).
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(Date.now() + IST_OFFSET_MS);
+  const y = istNow.getUTCFullYear();
+  const m = String(istNow.getUTCMonth()+1).padStart(2,'0');
+  const d = String(istNow.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
 }
+function nowIST(){
+  // returns a Date object representing "right now" shifted into IST wall-clock time
+  // (use getUTC* accessors on the result, since it's an offset trick, not a real timezone)
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  return new Date(Date.now() + IST_OFFSET_MS);
+}
+function normalizePhone(input){
+  let digits = (input||'').replace(/\D/g,'');
+  if(digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if(digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return digits;
+}
+
 function formatDMY(iso){
   if(!iso) return '-';
   const [y,m,d] = iso.split('-');
@@ -1317,19 +1389,19 @@ function render(){
   // long pending rentals (30+ days, unreturned)
   const activeRentals = loadRentals().filter(r=>r.status==='active');
   const longPending = activeRentals.filter(r=>{
-    const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
-    return days >= 30;
+    const days = calcDays(r.startDate, todayStr());
+    return days >= 29;
   });
   const bikesForPlate = bikes;
   document.getElementById('longPendingSection').innerHTML = longPending.length
     ? `<div class="alert-card">
-        <div class="alert-head">⚠️ Long Pending Rentals (30+ Days)</div>
+        <div class="alert-head">⚠️ Long Pending Rentals (29+ Days)</div>
         ${longPending.map(r=>{
-          const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+          const days = calcDays(r.startDate, todayStr());
           const bike = bikesForPlate.find(b=>b.id===r.bikeId);
           const balanceDue = roundMoney(days * (r.rate||0) - totalPaidSoFar(r));
           return `<div class="summary-row" style="border-bottom:1px solid #EFC3B7;align-items:flex-start;">
-            <span>${escapeHTML(r.customerName)} · ${escapeHTML(bike?bike.plate:'-')}<br>
+            <span>${escapeHTML(r.customerName)} · ${escapeHTML(r.bikeName)}${bike ? ' ('+escapeHTML(bike.plate)+')' : ''}<br>
               <span style="font-size:11px;color:#8a8272;font-weight:400;">Rent Date: ${formatDMY(r.startDate)} · ${days} days</span><br>
               <span class="amt" style="color:var(--rust);font-size:13px;">₹${balanceDue}</span>
             </span>
@@ -1377,7 +1449,7 @@ function render(){
 
   // expenses
   const allExpenses = loadExpenses().sort((a,b)=>b.id-a.id);
-  const expTotal = allExpenses.reduce((s,e)=>s+(e.amount||0),0);
+  const expTotal = roundMoney(allExpenses.reduce((s,e)=>s+(e.amount||0),0));
   document.getElementById('expTotal').textContent = '₹'+expTotal;
   const expenseQ = (document.getElementById('expenseSearchInput').value || '').trim().toLowerCase();
   const expenses = allExpenses.filter(e => !expenseQ ||
@@ -1400,22 +1472,79 @@ function render(){
     : `<div class="empty"><span class="big">🛠️</span>No maintenance records found</div>`;
 
   // reports (all-time, for dashboard profit)
-  const allTimeIncome = history.reduce((s,r)=>s+netRentalIncome(r),0);
-  const allMaintCost = loadMaintList().reduce((s,m)=>s+(m.cost||0),0);
-  const allTimeExpAll = expTotal + allMaintCost;
-  const allTimeNet = allTimeIncome - allTimeExpAll;
+  const allTimeIncome = roundMoney(history.reduce((s,r)=>s+netRentalIncome(r),0));
+  const allMaintCost = roundMoney(loadMaintList().reduce((s,m)=>s+(m.cost||0),0));
+  const allTimeExpAll = roundMoney(expTotal + allMaintCost);
+
+  // total cash actually collected (advance + mid-rental payments for active rentals,
+  // plus advance + payments + received for returned rentals)
+  const allRentalsForCash = loadRentals();
+  const cashCollected = roundMoney(allRentalsForCash.reduce((s,r)=>{
+    const base = totalPaidSoFar(r);
+    const extra = r.status === 'returned' ? (r.received||0) : 0;
+    return s + base + extra;
+  }, 0));
+
+  // pending receivable: expected money not yet collected from rentals still running
+  // (days so far × rate, minus whatever has already been paid on that rental)
+  const pendingReceivable = roundMoney(allRentalsForCash.filter(r=>r.status==='active').reduce((s,r)=>{
+    const days = calcDays(r.startDate, todayStr());
+    const owed = (days * (r.rate||0)) - totalPaidSoFar(r);
+    return s + (owed > 0 ? owed : 0);
+  }, 0));
+
+  // outstanding amount: unpaid balance left on rentals that have already been returned
+  // (should have been settled already — this is money genuinely overdue)
+  const outstandingAmount = roundMoney(history.reduce((s,r)=> s + ((r.balance||0) > 0 ? r.balance : 0), 0));
+
+  // profit = actual cash collected minus expenses (not booked/invoiced income) —
+  // money still pending from the customer is not counted as profit yet
+  const allTimeNet = roundMoney(cashCollected - allTimeExpAll);
 
   // dashboard profit stat (always all-time, unaffected by report filter)
   const dashProfitEl = document.getElementById('dashProfit');
   dashProfitEl.textContent = (allTimeNet<0?'-₹':'₹')+Math.abs(allTimeNet);
   dashProfitEl.className = 'amt ' + (allTimeNet>=0 ? 'amt-pos' : 'amt-neg');
-  document.getElementById('dashIncome').textContent = '₹'+allTimeIncome;
+  document.getElementById('dashGrossRevenue').textContent = '₹'+allTimeIncome;
   document.getElementById('dashExpense').textContent = '₹'+allTimeExpAll;
+  document.getElementById('dashCashCollected').textContent = '₹'+cashCollected;
+  document.getElementById('dashPendingReceivable').textContent = '₹'+pendingReceivable;
+  document.getElementById('dashOutstanding').textContent = '₹'+outstandingAmount;
+
+  // per-rental cash collected breakdown (so the total is fully auditable)
+  const cashBreakdownRows = allRentalsForCash.map(r=>{
+    const bikeForRow = bikes.find(b=>b.id===r.bikeId);
+    const advance = r.advance || 0;
+    const paymentsSum = roundMoney((r.payments||[]).reduce((s,p)=>s+(p.amount||0),0));
+    const receivedAtReturn = r.status === 'returned' ? (r.received||0) : 0;
+    const rowTotal = roundMoney(advance + paymentsSum + receivedAtReturn);
+    return {r, bikeForRow, advance, paymentsSum, receivedAtReturn, rowTotal};
+  }).filter(x=>x.rowTotal > 0).sort((a,b)=> b.rowTotal - a.rowTotal);
+
+  document.getElementById('repCashBreakdown').innerHTML = cashBreakdownRows.length
+    ? `<div class="summary-card">` + cashBreakdownRows.map(x=>{
+        const label = x.r.bikeName + (x.bikeForRow ? ' ('+x.bikeForRow.plate+')' : '');
+        const parts = [];
+        if(x.advance) parts.push('Advance ₹'+x.advance);
+        if(x.paymentsSum) parts.push('Payments ₹'+x.paymentsSum);
+        if(x.receivedAtReturn) parts.push('Received ₹'+x.receivedAtReturn);
+        return `<div class="summary-row" style="align-items:flex-start;">
+          <span>${escapeHTML(label)} · ${escapeHTML(x.r.customerName)}<br>
+            <span style="font-size:11px;opacity:0.75;">${parts.join(' + ')}</span>
+          </span>
+          <span class="amt amt-pos">₹${roundMoney(x.rowTotal)}</span>
+        </div>`;
+      }).join('') + `
+      <div class="summary-row" style="border-top:1px dashed rgba(250,246,234,0.3);margin-top:6px;padding-top:10px;">
+        <span style="font-weight:700;">Total</span><span class="amt amt-pos">₹${cashCollected}</span>
+      </div>
+      </div>`
+    : `<div class="empty"><span class="big">💵</span>No cash collected yet</div>`;
 
   // today's income / this month income
-  const todayIncome = history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0);
+  const todayIncome = roundMoney(history.filter(r=>r.returnDate===todayStr()).reduce((s,r)=>s+netRentalIncome(r),0));
   const thisMonthPrefix = todayStr().slice(0,7);
-  const monthIncome = history.filter(r=>(r.returnDate||'').slice(0,7)===thisMonthPrefix).reduce((s,r)=>s+netRentalIncome(r),0);
+  const monthIncome = roundMoney(history.filter(r=>(r.returnDate||'').slice(0,7)===thisMonthPrefix).reduce((s,r)=>s+netRentalIncome(r),0));
   document.getElementById('statTodayIncome').textContent = '₹'+todayIncome;
   document.getElementById('statMonthIncome').textContent = '₹'+monthIncome;
 
@@ -1450,10 +1579,10 @@ function render(){
   const filteredExpenses = reportFilter.type === 'all' ? loadExpenses() : loadExpenses().filter(e=>inRange(e.date));
   const filteredMaint = reportFilter.type === 'all' ? loadMaintList() : loadMaintList().filter(m=>inRange(m.date));
 
-  const totalIncome = filteredHistory.reduce((s,r)=>s+netRentalIncome(r),0);
-  const filteredExpTotal = filteredExpenses.reduce((s,e)=>s+(e.amount||0),0);
-  const maintCost = filteredMaint.reduce((s,m)=>s+(m.cost||0),0);
-  const totalExpAll = filteredExpTotal + maintCost;
+  const totalIncome = roundMoney(filteredHistory.reduce((s,r)=>s+netRentalIncome(r),0));
+  const filteredExpTotal = roundMoney(filteredExpenses.reduce((s,e)=>s+(e.amount||0),0));
+  const maintCost = roundMoney(filteredMaint.reduce((s,m)=>s+(m.cost||0),0));
+  const totalExpAll = roundMoney(filteredExpTotal + maintCost);
   const net = totalIncome - totalExpAll;
   document.getElementById('repIncome').textContent = '₹'+totalIncome;
   document.getElementById('repExpenses').textContent = '₹'+totalExpAll;
@@ -1475,7 +1604,7 @@ function render(){
     ? `<div class="summary-card">` + bikeRows.map(row=>{
         const b = bikes.find(x=>x.id===row.bikeId);
         const label = row.name + (b ? ' ('+b.plate+')' : '');
-        return `<div class="summary-row"><span>${escapeHTML(label)}</span><span class="amt amt-pos">₹${row.amt}</span></div>`;
+        return `<div class="summary-row"><span>${escapeHTML(label)}</span><span class="amt amt-pos">₹${roundMoney(row.amt)}</span></div>`;
       }).join('') + `</div>`
     : `<div class="empty"><span class="big">📊</span>No income data yet</div>`;
 
@@ -1492,7 +1621,7 @@ function render(){
   const fineRows = Object.entries(fineByBike);
   document.getElementById('repFineList').innerHTML = fineRows.length
     ? `<div class="summary-card">` + fineRows.map(([label,data])=>
-        `<div class="summary-row"><span>${escapeHTML(label)}<br><span style="font-size:11px;opacity:0.7;">${data.count} fine(s)</span></span><span class="amt amt-neg">₹${data.total}</span></div>`
+        `<div class="summary-row"><span>${escapeHTML(label)}<br><span style="font-size:11px;opacity:0.7;">${data.count} fine(s)</span></span><span class="amt amt-neg">₹${roundMoney(data.total)}</span></div>`
       ).join('') + `</div>`
     : `<div class="empty"><span class="big">🚫</span>No fines recorded</div>`;
 
@@ -1522,7 +1651,7 @@ function render(){
         const mNet = inc - exp;
         return `<div class="summary-row" style="border-bottom:1px solid rgba(250,246,234,0.15);flex-direction:column;align-items:flex-start;gap:4px;padding:10px 0;">
           <span style="font-weight:700;">${monthLabel(month)}</span>
-          <span style="font-size:12.5px;opacity:0.85;">Income ₹${inc} · Expense ₹${exp} · Net <span style="color:${mNet>=0?'#8FE0A8':'#F3A99A'};font-weight:700;">₹${mNet}</span></span>
+          <span style="font-size:12.5px;opacity:0.85;">Income ₹${roundMoney(inc)} · Expense ₹${roundMoney(exp)} · Net <span style="color:${mNet>=0?'#8FE0A8':'#F3A99A'};font-weight:700;">₹${roundMoney(mNet)}</span></span>
         </div>`;
       }).join('') + `</div>`
     : `<div class="empty"><span class="big">📅</span>No monthly data yet</div>`;
@@ -1674,10 +1803,10 @@ function customerCardHTML(c){
 
 function rentalCardHTML(r){
   const isActive = r.status === 'active';
-  const msSince = isActive ? (new Date() - new Date(r.startDate + 'T00:00:00')) : 0;
+  const msSince = isActive ? (Date.now() - new Date(r.startDate + 'T00:00:00+05:30').getTime()) : 0;
   const daysSince = isActive ? Math.floor(msSince / 86400000) : 0;
   const hoursSince = isActive ? Math.floor((msSince % 86400000) / 3600000) : 0;
-  const isLongPending = isActive && daysSince >= 30;
+  const isLongPending = isActive && daysSince >= 29;
   const runningLabel = daysSince > 0 ? `${daysSince}d ${hoursSince}h` : `${hoursSince}h`;
   const kmTravelled = (!isActive && r.startKM && r.endKM && parseFloat(r.endKM) >= parseFloat(r.startKM))
     ? (parseFloat(r.endKM) - parseFloat(r.startKM)) : null;
@@ -1925,7 +2054,7 @@ function saveRentEntry(){
 
   if(!bike){ alert('Please select a bike'); return; }
   if(!customerName){ alert('Customer name is required'); return; }
-  const phoneDigits = customerPhone.replace(/\D/g,'');
+  const phoneDigits = normalizePhone(customerPhone);
   if(!phoneDigits || phoneDigits.length !== 10){
     alert('சரியான 10 digit Phone Number கொடுக்கவும் / Please enter a valid 10-digit phone number');
     return;
@@ -1937,14 +2066,17 @@ function saveRentEntry(){
     invoiceNo: getNextInvoiceNo(),
     bikeId: bike.id,
     bikeName: bike.name,
-    customerName, customerPhone,
+    customerName, customerPhone: phoneDigits,
     startDate, startKM, rate, advance,
     status: 'active'
   });
-  saveRentals(rentals);
 
   const updatedBikes = bikes.map(b => b.id === bikeId ? {...b, status:'rented'} : b);
-  saveBikes(updatedBikes);
+  const ok = transactionalSet([
+    {key: RENTAL_KEY, value: rentals},
+    {key: STORAGE_KEY, value: updatedBikes}
+  ]);
+  if(!ok) return;
 
   closeRentModal();
   document.getElementById('rentalSearchInput').value = '';
@@ -1974,10 +2106,7 @@ function openReturnModal(rentalId){
 }
 function updateReturnCalc(rental){
   const returnDate = document.getElementById('rReturnDate').value || todayStr();
-  const start = new Date(rental.startDate);
-  const end = new Date(returnDate);
-  let days = Math.round((end - start) / 86400000);
-  if(days < 1) days = 1;
+  const days = calcDays(rental.startDate, returnDate);
   document.getElementById('retDays').value = days + (days===1 ? ' day' : ' days');
   // only auto-fill amount on first calc pass (when user hasn't typed a custom amount)
   if(document.activeElement.id !== 'retAmount'){
@@ -2017,7 +2146,6 @@ function saveReturnEntry(){
   const updatedRentals = rentals.map(r =>
     r.id === rentalId ? {...r, status:'returned', returnDate, endKM, totalAmount, discount, fine, received, balance} : r
   );
-  saveRentals(updatedRentals);
 
   const bikes = loadBikes();
   const updatedBikes = bikes.map(b => {
@@ -2028,7 +2156,11 @@ function saveReturnEntry(){
     }
     return updated;
   });
-  saveBikes(updatedBikes);
+  const ok = transactionalSet([
+    {key: RENTAL_KEY, value: updatedRentals},
+    {key: STORAGE_KEY, value: updatedBikes}
+  ]);
+  if(!ok) return;
 
   closeReturnModal();
   render();
@@ -2184,6 +2316,15 @@ document.getElementById('maintModalOverlay').addEventListener('click', (e)=>{
 // ---- CUSTOMER RECEIPT ----
 let currentReceiptRental = null;
 
+// ---- RENTAL BILLING ENGINE (single source of truth for day-based billing) ----
+// Business rule: billing is by CALENDAR DAY, not exact 24-hour periods.
+//   - Day 1 = the start date itself (a same-day rent + return always bills as 1 day).
+//   - Days are counted as the calendar-date difference between start and end
+//     (date-only, time-of-day is ignored for billing purposes).
+//   - Minimum billable duration is always 1 day, even if returned within hours.
+// This function is the ONLY place billable days should be computed — every other
+// part of the app (receipts, return entry, pending-balance calculations, reminders)
+// must call this instead of doing its own date math, so the rule never drifts.
 function calcDays(startDate, endDate){
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -2257,7 +2398,7 @@ function saveEditActiveRental(){
   const advance = parseFloat(document.getElementById('editActiveAdvance').value) || 0;
 
   if(!customerName){ alert('Customer name is required'); return; }
-  const phoneDigits = customerPhone.replace(/\D/g,'');
+  const phoneDigits = normalizePhone(customerPhone);
   if(!phoneDigits || phoneDigits.length !== 10){
     alert('சரியான 10 digit Phone Number கொடுக்கவும் / Please enter a valid 10-digit phone number');
     return;
@@ -2281,14 +2422,22 @@ function saveEditActiveRental(){
       if(b.id === newBikeId) return {...b, status:'rented'};
       return b;
     });
-    saveBikes(updatedBikes);
   }
 
   const updatedRentals = rentals.map(r => r.id === rentalId
-    ? {...r, bikeId: newBikeId, bikeName: newBike.name, customerName, customerPhone, startDate, startKM, rate, advance}
+    ? {...r, bikeId: newBikeId, bikeName: newBike.name, customerName, customerPhone: phoneDigits, startDate, startKM, rate, advance}
     : r
   );
-  saveRentals(updatedRentals);
+
+  if(bikeChanged){
+    const ok = transactionalSet([
+      {key: RENTAL_KEY, value: updatedRentals},
+      {key: STORAGE_KEY, value: updatedBikes}
+    ]);
+    if(!ok) return;
+  } else {
+    saveRentals(updatedRentals);
+  }
 
   closeEditActiveModal();
   render();
@@ -2302,6 +2451,7 @@ function editReturnedRental(rentalId){
   if(!r) return;
   document.getElementById('editReturnedId').value = r.id;
   document.getElementById('editReturnedInfo').value = `${r.bikeName} · ${r.customerName}`;
+  document.getElementById('editReturnedPaid').value = '₹' + totalPaidSoFar(r);
   document.getElementById('editRetAmount').value = r.totalAmount || 0;
   document.getElementById('editRetFine').value = r.fine || 0;
   document.getElementById('editRetDiscount').value = r.discount || 0;
@@ -2312,7 +2462,7 @@ function editReturnedRental(rentalId){
     const fine = parseFloat(document.getElementById('editRetFine').value) || 0;
     const discount = parseFloat(document.getElementById('editRetDiscount').value) || 0;
     const received = parseFloat(document.getElementById('editRetReceived').value) || 0;
-    const balance = roundMoney(total + fine - discount - (r.advance||0) - received);
+    const balance = roundMoney(total + fine - discount - totalPaidSoFar(r) - received);
     document.getElementById('editRetBalance').value = '₹' + balance;
   };
   ['editRetAmount','editRetFine','editRetDiscount','editRetReceived'].forEach(id=>{
@@ -2335,7 +2485,7 @@ function saveEditReturnedRental(){
   const rentals = loadRentals();
   const rental = rentals.find(r=>r.id===id);
   if(!rental) return;
-  const balance = roundMoney(totalAmount + fine - discount - (rental.advance||0) - received);
+  const balance = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
 
   const updated = rentals.map(r => r.id === id ? {...r, totalAmount, fine, discount, received, balance} : r);
   saveRentals(updated);
@@ -2380,7 +2530,7 @@ function openReceipt(rentalId){
     <div class="summary-row" style="${balance>0
         ? 'background:#FCEEE9;border:1.5px solid #EFC3B7;border-radius:12px;padding:12px 14px;margin-top:8px;'
         : 'border-top:1px dashed var(--line);margin-top:4px;padding-top:10px;'}">
-      <span style="font-weight:700;${balance>0?'color:var(--rust);':''}">'தற்போது பெற வேண்டியது'</span>
+      <span style="font-weight:700;${balance>0?'color:var(--rust);':''}">${balance>0?'⚠️ Balance Amount (Pending)':'Balance Amount'}</span>
       <span class="amt" style="font-size:${balance>0?'18px':'15px'};font-weight:800;color:${balance>0?'var(--rust)':'var(--green)'};">₹${balance}</span>
     </div>
   `;
@@ -2496,7 +2646,7 @@ function downloadReportPDF(){
     Object.values(byBike).forEach(row=>{
       const b = allBikesForPdf.find(x=>x.id===row.bikeId);
       const label = row.name + (b ? ' ('+b.plate+')' : '');
-      lines.push({text:`${label}: Rs.${row.amt}`, size:11});
+      lines.push({text:`${label}: Rs.${roundMoney(row.amt)}`, size:11});
     });
   }
 
@@ -2527,7 +2677,7 @@ function shareReportWhatsApp(){
     Object.values(byBike).forEach(row=>{
       const b = allBikesForWA.find(x=>x.id===row.bikeId);
       const label = row.name + (b ? ' ('+b.plate+')' : '');
-      text += `${label}: ₹${row.amt}\n`;
+      text += `${label}: ₹${roundMoney(row.amt)}\n`;
     });
   }
 
@@ -2683,10 +2833,13 @@ function restoreBackup(event){
       }
 
       if(!confirm(`Backup Version: ${data.version || 'unknown'} · App Version: ${APP_VERSION}\nRecords: ${(data.bikes||[]).length} bikes, ${(data.rentals||[]).length} rentals, ${(data.expenses||[]).length} expenses, ${(data.maintenance||[]).length} maintenance${integrityWarning}\n\nஇது உங்கள் தற்போதைய data-ஐ முழுவதும் மாற்றிவிடும். தொடரவா? / This will replace all current data. Continue?`)) return;
-      saveBikes(data.bikes || []);
-      saveRentals(data.rentals || []);
-      saveExpenses(data.expenses || []);
-      saveMaintList(data.maintenance || []);
+      const okLocalRestore = transactionalSet([
+        {key: STORAGE_KEY, value: data.bikes || []},
+        {key: RENTAL_KEY, value: data.rentals || []},
+        {key: EXPENSE_KEY, value: data.expenses || []},
+        {key: MAINT_KEY, value: data.maintenance || []}
+      ]);
+      if(!okLocalRestore) return;
       (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r.invoiceNo));
       alert('Restore complete!');
       render();
@@ -2705,8 +2858,8 @@ function getDueSummary(){
   const currentBikes = loadBikes();
   const activeRentals = loadRentals().filter(r=>r.status==='active');
   const longPending = activeRentals.filter(r=>{
-    const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
-    return days >= 30;
+    const days = calcDays(r.startDate, todayStr());
+    return days >= 29;
   });
   const serviceDue = loadMaintList().filter(m=>{
     let due = false;
@@ -2735,7 +2888,7 @@ function checkDailyDueReminder(){
   if(longPending.length){
     html += `<div style="font-weight:700;color:var(--rust);margin-bottom:8px;font-size:13.5px;">⚠️ Long Pending Rentals (${longPending.length})</div>`;
     longPending.forEach(r=>{
-      const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+      const days = calcDays(r.startDate, todayStr());
       const bike = currentBikes.find(b=>b.id===r.bikeId);
       html += `<div class="summary-row" style="align-items:flex-start;border-bottom:1px solid var(--line);padding:10px 0;">
         <span>${escapeHTML(r.customerName)} · ${escapeHTML(bike?bike.plate:'-')}<br>
@@ -2794,7 +2947,7 @@ function sendWhatsAppReminder(rentalId){
   let text = `Hi ${r.customerName}, this is a reminder from MASS BIKE.\n`;
 
   if(r.status === 'active'){
-    const days = Math.round((new Date(todayStr()) - new Date(r.startDate)) / 86400000);
+    const days = calcDays(r.startDate, todayStr());
     const owed = roundMoney(Math.max(0, (days * (r.rate||0)) - totalPaidSoFar(r)));
     text += `Your rental of ${r.bikeName}${bike ? ' ('+bike.plate+')' : ''} has been running for ${days} days since ${formatDMY(r.startDate)}.\n`;
     if(owed > 0) text += `Pending amount so far: ₹${owed}.\n`;
@@ -2823,16 +2976,9 @@ setInterval(()=>{
   if(rentalsTabVisible || dashboardTabVisible) render();
 }, 60000);
 
-// Register a minimal service worker (enables full "Install App" prompt when hosted on HTTPS)
+// Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  const swCode = `
-    self.addEventListener('install', e => self.skipWaiting());
-    self.addEventListener('activate', e => self.clients.claim());
-    self.addEventListener('fetch', e => {});
-  `;
-  const swBlob = new Blob([swCode], {type:'application/javascript'});
-  const swUrl = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl).catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.0').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
@@ -2851,5 +2997,6 @@ document.addEventListener('focusin', (e)=>{
   }
 });
 </script>
+
 </body>
 </html>
