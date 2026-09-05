@@ -624,15 +624,26 @@
       <div id="repMonthList"></div>
       <div class="section-title">Bike-wise Income</div>
       <div id="repBikeList"></div>
-      <div class="section-title">Bike-wise Fines</div>
-      <div id="repFineList"></div>
+      <div class="section-title">💰 Revenue / Collection / Due Summary</div>
+      <div id="repFinancialSummary"></div>
+      <div class="section-title">🏍️ Bike-wise Income & Collection</div>
+      <div id="repBikeList"></div>
+      <div class="section-title">👥 Customer-wise Outstanding</div>
+      <div id="repCustomerOutstanding"></div>
       <div class="section-title">💵 Cash Collected Breakdown</div>
       <div id="repCashBreakdown"></div>
+      <div class="section-title">💸 Expense Summary</div>
+      <div id="repExpenseSummary"></div>
+      <div class="section-title">💰 Bike-wise Fines</div>
+      <div id="repFineList"></div>
+      <div class="section-title">🛡️ Dashboard ↔ Reports Reconciliation</div>
+      <div id="repReconciliation"></div>
       <div class="section-title">🛡️ Data & Rental Audit</div>
       <div id="repAudit"></div>
     </div>
     <div class="addbar" style="display:flex;gap:10px;margin-top:18px;">
       <button class="btn btn-outline" style="flex:1;" onclick="downloadReportPDF()">📄 Download PDF</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="downloadReportCSV()">📊 Report CSV</button>
       <button class="btn btn-primary" style="flex:1;" onclick="shareReportWhatsApp()">📲 WhatsApp Share</button>
     </div>
   </section>
@@ -648,7 +659,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.4</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.6</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -704,7 +715,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.5</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.6</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1067,7 +1078,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.5';
+const APP_VERSION = '4.6';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1685,6 +1696,29 @@ function render(){
   const maintCost = roundMoney(filteredMaint.reduce((s,m)=>s+(m.cost||0),0));
   const totalExpAll = roundMoney(filteredExpTotal + maintCost);
   const net = totalIncome - totalExpAll;
+  const filteredCashCollected = roundMoney(filteredHistory.reduce((s,r)=>{
+    const paid = totalPaidSoFar(r);
+    const received = r.received || 0;
+    return s + paid + received;
+  },0) + allRentalsForCash.filter(r=>r.status==='active' && reportFilter.type!=='all').reduce((s,r)=>{
+    const payments = (r.payments||[]).filter(p=>inRange(p.date)).reduce((x,p)=>x+(p.amount||0),0);
+    return s + (inRange(r.startDate) ? (r.advance||0) : 0) + payments;
+  },0));
+  const filteredActiveDue = roundMoney(allRentalsForCash.filter(r=>r.status==='active').reduce((s,r)=>{
+    if(reportFilter.type!=='all' && !inRange(r.startDate)) return s;
+    const days = calcDays(r.startDate, todayStr());
+    return s + Math.max(0, days*(r.rate||0)-totalPaidSoFar(r));
+  },0));
+  const filteredReturnedOutstanding = roundMoney(filteredHistory.reduce((s,r)=>s+Math.max(0,r.balance||0),0));
+  document.getElementById('repFinancialSummary').innerHTML = `<div class="summary-card">
+    <div class="summary-row"><span>Gross Revenue</span><span class="amt amt-pos">₹${totalIncome}</span></div>
+    <div class="summary-row"><span>Cash Collected</span><span class="amt amt-pos">₹${filteredCashCollected}</span></div>
+    <div class="summary-row"><span>Active Pending Rent</span><span class="amt" style="color:var(--rust);">₹${filteredActiveDue}</span></div>
+    <div class="summary-row"><span>Returned Outstanding</span><span class="amt" style="color:var(--rust);">₹${filteredReturnedOutstanding}</span></div>
+    <div class="summary-row"><span>Expenses</span><span class="amt amt-neg">₹${totalExpAll}</span></div>
+    <div class="summary-row"><span>Net Profit / Loss</span><span class="amt ${net>=0?'amt-pos':'amt-neg'}">${net<0?'-₹':'₹'}${Math.abs(net)}</span></div>
+  </div>`;
+
   document.getElementById('repIncome').textContent = '₹'+totalIncome;
   document.getElementById('repExpenses').textContent = '₹'+totalExpAll;
   const netEl = document.getElementById('repNet');
@@ -1697,17 +1731,42 @@ function render(){
   const byBike = {};
   filteredHistory.forEach(r=>{
     const key = r.bikeId || r.bikeName;
-    if(!byBike[key]) byBike[key] = {name: r.bikeName, bikeId: r.bikeId, amt: 0};
+    if(!byBike[key]) byBike[key] = {name:r.bikeName,bikeId:r.bikeId,amt:0,collection:0,rentals:0};
     byBike[key].amt += netRentalIncome(r);
+    byBike[key].collection += totalPaidSoFar(r) + (r.received||0);
+    byBike[key].rentals += 1;
   });
-  const bikeRows = Object.values(byBike);
+  const bikeRows = Object.values(byBike).sort((a,b)=>b.amt-a.amt);
   document.getElementById('repBikeList').innerHTML = bikeRows.length
     ? `<div class="summary-card">` + bikeRows.map(row=>{
         const b = bikes.find(x=>x.id===row.bikeId);
         const label = row.name + (b ? ' ('+b.plate+')' : '');
-        return `<div class="summary-row"><span>${escapeHTML(label)}</span><span class="amt amt-pos">₹${roundMoney(row.amt)}</span></div>`;
+        return `<div class="summary-row" style="align-items:flex-start;"><span>${escapeHTML(label)}<br><span style="font-size:11px;opacity:.7;">${row.rentals} returned rental(s) · Collected ₹${roundMoney(row.collection)}</span></span><span class="amt amt-pos">₹${roundMoney(row.amt)}</span></div>`;
       }).join('') + `</div>`
     : `<div class="empty"><span class="big">📊</span>No income data yet</div>`;
+
+  // customer-wise outstanding: active pending + returned balance
+  const custDue = {};
+  allRentalsForCash.forEach(r=>{
+    const name=(r.customerName||'').trim()||'Unknown Customer';
+    const phone=(r.customerPhone||'').replace(/\D/g,'');
+    const key=name.toLowerCase()+'|'+phone;
+    if(reportFilter.type!=='all'){
+      const relevantActive=r.status==='active' && inRange(r.startDate);
+      const relevantReturned=r.status==='returned' && inRange(r.returnDate);
+      if(!relevantActive && !relevantReturned) return;
+    }
+    let due=0;
+    if(r.status==='active'){ const days=calcDays(r.startDate,todayStr()); due=Math.max(0,days*(r.rate||0)-totalPaidSoFar(r)); }
+    else due=Math.max(0,r.balance||0);
+    if(due<=0) return;
+    if(!custDue[key]) custDue[key]={name,phone,due:0};
+    custDue[key].due += due;
+  });
+  const custRows=Object.values(custDue).sort((a,b)=>b.due-a.due);
+  document.getElementById('repCustomerOutstanding').innerHTML=custRows.length
+    ? `<div class="summary-card">`+custRows.map(c=>`<div class="summary-row"><span>${escapeHTML(c.name)}<br><span style="font-size:11px;opacity:.7;">${escapeHTML(c.phone||'')}</span></span><span class="amt" style="color:var(--rust);">₹${roundMoney(c.due)}</span></div>`).join('')+`</div>`
+    : `<div class="empty"><span class="big">✅</span>No outstanding customer balance</div>`;
 
   // bike-wise fine tracking (grouped by bike name + vehicle number)
   const fineByBike = {};
@@ -1756,6 +1815,22 @@ function render(){
         </div>`;
       }).join('') + `</div>`
     : `<div class="empty"><span class="big">📅</span>No monthly data yet</div>`;
+
+  const expenseByCategory={};
+  filteredExpenses.forEach(e=>{ const k=e.category||'Other'; expenseByCategory[k]=(expenseByCategory[k]||0)+(e.amount||0); });
+  filteredMaint.forEach(m=>{ const k='Maintenance · '+(m.type||'Other'); expenseByCategory[k]=(expenseByCategory[k]||0)+(m.cost||0); });
+  const expRows=Object.entries(expenseByCategory).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('repExpenseSummary').innerHTML=expRows.length
+    ? `<div class="summary-card">`+expRows.map(([k,v])=>`<div class="summary-row"><span>${escapeHTML(k)}</span><span class="amt amt-neg">₹${roundMoney(v)}</span></div>`).join('')+`</div>`
+    : `<div class="empty"><span class="big">💸</span>No expenses in this period</div>`;
+
+  const dashboardSnapshot={income:allTimeIncome,expenses:allTimeExpAll,net:allTimeNet,cash:cashCollected,pending:pendingReceivable,outstanding:outstandingAmount};
+  const reconRows=[['Gross Revenue',dashboardSnapshot.income,roundMoney(history.reduce((s,r)=>s+netRentalIncome(r),0))],['Expenses',dashboardSnapshot.expenses,roundMoney(loadExpenses().reduce((s,e)=>s+(e.amount||0),0)+loadMaintList().reduce((s,m)=>s+(m.cost||0),0))],['Net Profit',dashboardSnapshot.net,roundMoney(dashboardSnapshot.income-dashboardSnapshot.expenses)]];
+  const reconOK=reconRows.every(x=>Math.abs(x[1]-x[2])<=0.01);
+  document.getElementById('repReconciliation').innerHTML=`<div class="summary-card" style="border:1px solid ${reconOK?'rgba(21,120,83,.35)':'var(--rust)'};">`+
+    `<div class="summary-row"><span style="font-weight:800;color:${reconOK?'var(--green)':'var(--rust)'};">${reconOK?'✅ Reconciliation Passed':'⚠️ Reconciliation Issue'}</span><span style="font-size:12px;">All Time</span></div>`+
+    reconRows.map(x=>`<div class="summary-row"><span>${x[0]}</span><span class="amt">₹${x[1]} / ₹${x[2]}</span></div>`).join('')+
+    `<div style="font-size:11px;color:#6f786f;line-height:1.5;margin-top:8px;">Dashboard and all-time report use the same revenue/expense/profit definitions.</div></div>`;
 
   // customer history & repeat customer tracking
   const allRentals = loadRentals();
@@ -2858,6 +2933,19 @@ function shareReportWhatsApp(){
   const url = 'https://wa.me/?text=' + encodeURIComponent(text);
   window.open(url, '_blank');
 }
+
+function downloadReportCSV(){
+  const stamp=todayStr().replace(/-/g,'');
+  const rows=[
+    ['Period', document.getElementById('repFilterLabel').textContent],
+    ['Gross Revenue', totalMoneyText(document.getElementById('repIncome').textContent)],
+    ['Expenses', totalMoneyText(document.getElementById('repExpenses').textContent)],
+    ['Net Profit/Loss', totalMoneyText(document.getElementById('repNet').textContent)]
+  ];
+  const headers=['Metric','Amount'];
+  downloadCSVFile(`mass-bike-report-${stamp}.csv`, rowsToCSV(headers,rows));
+}
+function totalMoneyText(v){ return String(v||'').replace(/₹/g,'').replace(/,/g,'').trim(); }
 
 // ---- BACKUP / RESTORE ----
 function simpleChecksum(str){
