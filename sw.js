@@ -1,8 +1,6 @@
-// MASS BIKE — Service Worker
-// Proper same-origin file (not a Blob URL) so caching, versioning, and updates
-// work exactly the way a normal PWA service worker is supposed to.
-
-const CACHE_VERSION = 'massbike-v3.3';
+// MASS BIKE V4.0 — Service Worker
+// Local backup/restore only. No Google Drive integration.
+const CACHE_VERSION = 'massbike-v4.0';
 const APP_SHELL = [
   './',
   './index.html',
@@ -12,20 +10,13 @@ const APP_SHELL = [
   './apple-touch-icon.png'
 ];
 
-// Google Fonts (CSS + the actual .woff2 files) both serve proper CORS headers,
-// so we can cache them like any other asset — once loaded while online, the
-// app's typography stays consistent even fully offline afterwards.
-const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
-
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) =>
-      Promise.all(
-        APP_SHELL.map((url) =>
-          cache.add(new Request(url, {cache: 'reload'})).catch(() => {})
-        )
-      )
+      Promise.all(APP_SHELL.map((url) =>
+        cache.add(new Request(url, { cache: 'reload' })).catch(() => {})
+      ))
     )
   );
 });
@@ -34,77 +25,38 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
       Promise.all(
-        names.filter((n) => n !== CACHE_VERSION).map((n) => caches.delete(n))
+        names.filter((name) => name !== CACHE_VERSION).map((name) => caches.delete(name))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  const isSameOrigin = url.origin === self.location.origin;
-  const isFontHost = FONT_HOSTS.includes(url.hostname);
+  if (url.origin !== self.location.origin) return;
 
-  // App shell / navigation requests: cache-first for instant offline launch,
-  // refreshed from the network in the background whenever online. Any request
-  // for the page itself (navigation) or the exact same-origin shell files is
-  // treated as app-shell — matched by filename only, so this keeps working
-  // no matter what sub-path the site is hosted under.
-  const isShellFile = isSameOrigin && APP_SHELL.some((p) => url.pathname.endsWith(p.replace('./', '')));
-  if (event.request.mode === 'navigate' || isShellFile) {
-    const shellKey = event.request.mode === 'navigate' ? './index.html' : event.request;
+  // Always try the network first for the app shell so deployed updates appear immediately.
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
     event.respondWith(
-      caches.match(shellKey).then((cached) => {
-        const network = fetch(event.request)
-          .then((res) => {
-            if (res && res.status === 200) {
-              caches.open(CACHE_VERSION).then((cache) => cache.put(shellKey, res.clone()));
-            }
-            return res;
-          })
-          .catch(() => cached || caches.match('./index.html'));
-        return cached || network;
-      })
-    );
-    return;
-  }
-
-  // Google Fonts: cache-first so typography stays consistent offline once the
-  // font has loaded at least once. Font files never change once published
-  // (Google versions the URL itself), so cache-first is safe and instant.
-  if (isFontHost) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) return cached;
-        return fetch(event.request)
-          .then((res) => {
-            if (res && res.status === 200) {
-              const clone = res.clone();
-              caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
-            }
-            return res;
-          })
-          .catch(() => cached); // offline + never cached: let it fail, CSS fallback fonts take over
-      })
-    );
-    return;
-  }
-
-  // Everything else (Google Drive/Identity API scripts, etc.): network-first,
-  // fall back to cache if offline. These genuinely need live connectivity
-  // (OAuth, Drive backup/restore) — when offline they simply won't work,
-  // which is expected, and the rest of the app keeps working normally.
-  event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        if (res && res.status === 200 && isSameOrigin) {
-          const clone = res.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
+      fetch(event.request, { cache: 'no-store' }).then((response) => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put('./index.html', copy));
         }
-        return res;
-      })
-      .catch(() => caches.match(event.request))
+        return response;
+      }).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request).then((response) => {
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, copy));
+      }
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });
