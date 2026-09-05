@@ -533,7 +533,7 @@
       <div class="summary-row"><span>⚠️ Outstanding Amount</span><span class="amt amt-neg" id="dashOutstanding">₹0</span></div>
     </div>
     <div style="font-size:10.5px;color:#8a8272;margin:-10px 0 14px;padding:0 4px;">
-      Gross Revenue = Returned rentals-ன் billed total · Cash Collected = Advance + recorded payments + Returned-ல் received · Pending Receivable = Active rentals-ல் இன்னும் வராத rent · Net Profit = Cash Collected − Expenses · Outstanding = Returned rentals-ல் balance
+      Gross Revenue = Returned rentals-ன் billed total · Cash Collected = Advance + recorded payments + Returned-ல் received · Pending Receivable = Active rentals-ல் இன்னும் வராத rent · Net Profit = Gross Rental Revenue − Expenses · Outstanding = Returned rentals-ல் balance
     </div>
     <div id="longPendingSection"></div>
     <div id="returnedPendingSection"></div>
@@ -1520,9 +1520,9 @@ function render(){
   // (should have been settled already — this is money genuinely overdue)
   const outstandingAmount = roundMoney(history.reduce((s,r)=> s + ((r.balance||0) > 0 ? r.balance : 0), 0));
 
-  // profit = actual cash collected minus expenses (not booked/invoiced income) —
-  // money still pending from the customer is not counted as profit yet
-  const allTimeNet = roundMoney(cashCollected - allTimeExpAll);
+  // net profit = booked rental revenue from completed rentals minus all expenses.
+  // Active-rental advances/payments are cash received, not profit by themselves.
+  const allTimeNet = roundMoney(allTimeIncome - allTimeExpAll);
 
   // dashboard profit stat (always all-time, unaffected by report filter)
   const dashProfitEl = document.getElementById('dashProfit');
