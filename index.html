@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4</title>
+<title>MASS BIKE V4.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -558,6 +558,13 @@
     <div class="searchbar">
       <input type="text" id="rentalSearchInput" placeholder="🔍 Search customer / bike / phone...">
     </div>
+    <div class="searchbar" style="gap:6px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm rental-filter active" data-rental-filter="all" onclick="setRentalFilter('all')">All</button>
+      <button class="btn btn-outline btn-sm rental-filter" data-rental-filter="active" onclick="setRentalFilter('active')">Active</button>
+      <button class="btn btn-outline btn-sm rental-filter" data-rental-filter="pending" onclick="setRentalFilter('pending')">💰 Pending</button>
+      <button class="btn btn-outline btn-sm rental-filter" data-rental-filter="returned" onclick="setRentalFilter('returned')">Returned</button>
+      <button class="btn btn-outline btn-sm rental-filter" data-rental-filter="long" onclick="setRentalFilter('long')">⏱ 29+ Days</button>
+    </div>
     <div class="addbar">
       <button class="btn btn-primary btn-block" onclick="openRentModal()">+ New Rent Entry</button>
     </div>
@@ -641,7 +648,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.0</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.3</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -697,7 +704,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.2</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.3</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1060,7 +1067,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.2';
+const APP_VERSION = '4.3';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1381,6 +1388,12 @@ document.getElementById('menuOverlay').addEventListener('click', (e)=>{
 
 document.getElementById('searchInput').addEventListener('input', render);
 document.getElementById('rentalSearchInput').addEventListener('input', render);
+let rentalFilter = 'all';
+function setRentalFilter(filter){
+  rentalFilter = filter;
+  document.querySelectorAll('.rental-filter').forEach(b=>b.classList.toggle('active', b.dataset.rentalFilter===filter));
+  render();
+}
 document.getElementById('expenseSearchInput').addEventListener('input', render);
 document.getElementById('maintSearchInput').addEventListener('input', render);
 document.getElementById('customerSearchInput').addEventListener('input', render);
@@ -1461,16 +1474,28 @@ function render(){
     (r.customerName||'').toLowerCase().includes(rentalQ) ||
     (r.bikeName||'').toLowerCase().includes(rentalQ) ||
     (r.customerPhone||'').toLowerCase().includes(rentalQ);
-  const active = rentals.filter(r=>r.status==='active' && rentalMatch(r)).sort((a,b)=>b.id-a.id);
-  const history = rentals.filter(r=>r.status==='returned' && rentalMatch(r)).sort((a,b)=>b.id-a.id);
+  const activeAll = rentals.filter(r=>r.status==='active' && rentalMatch(r)).sort((a,b)=>b.id-a.id);
+  const historyAll = rentals.filter(r=>r.status==='returned' && rentalMatch(r)).sort((a,b)=>b.id-a.id);
+  const activePending = activeAll.filter(r=>{
+    const days = calcDays(r.startDate, todayStr());
+    return (days * (r.rate||0) - totalPaidSoFar(r)) > 0;
+  });
+  const returnedPendingFilter = historyAll.filter(r=>(r.balance||0) > 0);
+  let active = activeAll, history = historyAll;
+  if(rentalFilter==='active'){ history=[]; }
+  else if(rentalFilter==='returned'){ active=[]; }
+  else if(rentalFilter==='pending'){ active=activePending; history=returnedPendingFilter; }
+  else if(rentalFilter==='long'){
+    active=activeAll.filter(r=>calcDays(r.startDate,todayStr())>=29); history=[];
+  }
 
   document.getElementById('activeRentalList').innerHTML = active.length
     ? active.map(rentalCardHTML).join('')
-    : `<div class="empty"><span class="big">🔑</span>No active rentals</div>`;
+    : (rentalFilter==='returned' ? '' : `<div class="empty"><span class="big">🔑</span>No matching active rentals</div>`);
 
   document.getElementById('historyRentalList').innerHTML = history.length
     ? history.map(rentalCardHTML).join('')
-    : `<div class="empty"><span class="big">📋</span>No completed rentals yet</div>`;
+    : (rentalFilter==='active' || rentalFilter==='long' ? '' : `<div class="empty"><span class="big">📋</span>No matching completed rentals</div>`);
 
   // expenses
   const allExpenses = loadExpenses().sort((a,b)=>b.id-a.id);
@@ -1901,7 +1926,7 @@ function rentalCardHTML(r){
           ${formatDMY(r.startDate)} ${isActive ? '' : '→ '+formatDMY(r.returnDate)}
           ${isActive
             ? ' · ₹'+r.rate+'/day' + (paymentsTotal ? ' · Paid so far ₹'+paymentsTotal : '')
-            : ' · Total ₹'+r.totalAmount + (r.fine ? ' · Fine ₹'+r.fine : '') + (r.discount ? ' · Discount ₹'+r.discount : '') + (r.received ? ' · Received ₹'+r.received : '') + ' · Balance ₹'+(r.balance!=null?r.balance:r.totalAmount)}
+            : ' · Total ₹'+r.totalAmount + (r.fine ? ' · Fine ₹'+r.fine : '') + (r.discount ? ' · Discount ₹'+r.discount : '') + ' · Paid ₹'+paymentsTotal + (r.received ? ' · Received ₹'+r.received : '') + ' · Balance ₹'+(r.balance!=null?r.balance:r.totalAmount)}
           ${isActive ? `<span class="due-tag ${isLongPending?'due-over':'due-ok'}">⏱ Running: ${runningLabel}</span>` : ''}
           ${!isActive ? `<br>Profit: ₹${profit}${kmTravelled!=null ? ' · KM Travelled: '+kmTravelled : ''}` : ''}
         </div>
@@ -3054,7 +3079,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.0').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.3').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
