@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4.3</title>
+<title>MASS BIKE V4.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -648,7 +648,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.3</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.4</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -704,7 +704,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.3</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.4</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1067,7 +1067,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.3';
+const APP_VERSION = '4.4';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1764,13 +1764,16 @@ function render(){
     const key = (r.customerName||'').trim().toLowerCase() + '|' + (r.customerPhone||'').replace(/\D/g,'');
     if(!customerMap[key]){
       customerMap[key] = {
-        name: r.customerName, phone: r.customerPhone,
-        rentalCount: 0, totalSpent: 0, lastDate: null
+        key, name: r.customerName, phone: r.customerPhone,
+        rentalCount: 0, totalSpent: 0, lastDate: null,
+        activeCount: 0, returnedCount: 0
       };
     }
     const c = customerMap[key];
     c.rentalCount += 1;
     c.totalSpent += netRentalIncome(r);
+    if(r.status === 'active') c.activeCount += 1;
+    if(r.status === 'returned') c.returnedCount += 1;
     const thisDate = r.returnDate || r.startDate;
     if(thisDate && (!c.lastDate || thisDate > c.lastDate)) c.lastDate = thisDate;
   });
@@ -1887,6 +1890,7 @@ function maintCardHTML(m){
 
 function customerCardHTML(c){
   const isRepeat = c.rentalCount >= 2;
+  const key = encodeURIComponent(c.key || ((c.name||'').trim().toLowerCase() + '|' + (c.phone||'').replace(/\D/g,'')));
   return `
   <div class="bike-card">
     <div class="bike-left">
@@ -1895,11 +1899,80 @@ function customerCardHTML(c){
         <div class="name">${escapeHTML(c.name)}${isRepeat ? `<span class="repeat-badge">Repeat · ${c.rentalCount}x</span>` : ''}</div>
         <div class="plate-no">${escapeHTML(c.phone||'-')}</div>
         <div class="meta">
-          Total Spent: ₹${c.totalSpent} · Last Rental: ${c.lastDate ? formatDMY(c.lastDate) : '-'}
+          Rentals: ${c.rentalCount} · ${c.activeCount} Active · Last: ${c.lastDate ? formatDMY(c.lastDate) : '-'}
+        </div>
+        <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="openCustomerHistory('${key}')">📋 History</button>
+          ${c.phone ? `<button class="btn btn-outline btn-sm" onclick="callCustomerByPhone('${encodeURIComponent(c.phone)}')">📞 Call</button>` : ''}
+          ${c.phone ? `<button class="btn btn-primary btn-sm" onclick="whatsAppCustomer('${encodeURIComponent(c.phone)}','${encodeURIComponent(c.name||'')}')">📲 WhatsApp</button>` : ''}
         </div>
       </div>
     </div>
   </div>`;
+}
+
+function callCustomerByPhone(encodedPhone){
+  const phone = decodeURIComponent(encodedPhone||'').replace(/\D/g,'');
+  if(phone) window.location.href = 'tel:'+phone;
+}
+
+function whatsAppCustomer(encodedPhone, encodedName){
+  const phone = decodeURIComponent(encodedPhone||'').replace(/\D/g,'');
+  const name = decodeURIComponent(encodedName||'');
+  if(!phone) return;
+  const text = `வணக்கம் ${name}, MASS BIKE rental தொடர்பாக தொடர்பு கொள்கிறோம்.`;
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
+}
+
+function openCustomerHistory(encodedKey){
+  const key = decodeURIComponent(encodedKey||'');
+  const rentals = loadRentals().filter(r=>{
+    const rk = (r.customerName||'').trim().toLowerCase() + '|' + (r.customerPhone||'').replace(/\D/g,'');
+    return rk === key;
+  }).sort((a,b)=> (b.startDate||'').localeCompare(a.startDate||'') || b.id-a.id);
+  if(!rentals.length){ alert('Customer history not found'); return; }
+  const first = rentals[0];
+  const name = first.customerName || '-';
+  const phone = first.customerPhone || '-';
+  const billed = roundMoney(rentals.reduce((s,r)=>s+netRentalIncome(r),0));
+  const paid = roundMoney(rentals.reduce((s,r)=>s+totalPaidSoFar(r)+(r.status==='returned'?(r.received||0):0),0));
+  const balance = roundMoney(rentals.reduce((s,r)=>{
+    if(r.status==='returned') return s + Math.max(0, r.balance||0);
+    const days = calcDays(r.startDate, todayStr());
+    return s + Math.max(0, days*(r.rate||0)-totalPaidSoFar(r));
+  },0));
+  const rows = rentals.map(r=>{
+    const amount = netRentalIncome(r);
+    const paidRow = roundMoney(totalPaidSoFar(r)+(r.status==='returned'?(r.received||0):0));
+    const balRow = r.status==='returned' ? Math.max(0,r.balance||0) : Math.max(0,calcDays(r.startDate,todayStr())*(r.rate||0)-totalPaidSoFar(r));
+    return `<div class="summary-row" style="align-items:flex-start;gap:10px;">
+      <span><b>${escapeHTML(r.bikeName||'-')}</b><br><span style="font-size:11px;color:#8a8272;">${formatDMY(r.startDate)} · ${r.status==='active'?'Active':'Returned'}</span></span>
+      <span style="text-align:right;white-space:nowrap;">₹${amount}<br><span style="font-size:10px;color:#8a8272;">Paid ₹${paidRow}${balRow>0?' · Due ₹'+roundMoney(balRow):''}</span></span>
+    </div>`;
+  }).join('');
+  let ov=document.getElementById('customerHistoryOverlay');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='customerHistoryOverlay'; ov.className='overlay hide';
+    ov.innerHTML='<div class="modal" style="max-height:88vh;overflow:auto;"><h3 id="customerHistoryTitle">Customer History</h3><div id="customerHistoryBody"></div><div class="modal-actions"><button class="btn btn-outline btn-block" onclick="closeCustomerHistory()">Close</button></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{ if(e.target===ov) closeCustomerHistory(); });
+  }
+  document.getElementById('customerHistoryTitle').textContent = name+' · History';
+  document.getElementById('customerHistoryBody').innerHTML = `
+    <div class="summary-card" style="margin-bottom:12px;">
+      <div class="summary-row"><span>Phone</span><span class="amt">${escapeHTML(phone)}</span></div>
+      <div class="summary-row"><span>Total Rentals</span><span class="amt">${rentals.length}</span></div>
+      <div class="summary-row"><span>Total Billed</span><span class="amt amt-pos">₹${billed}</span></div>
+      <div class="summary-row"><span>Total Paid / Received</span><span class="amt amt-pos">₹${paid}</span></div>
+      <div class="summary-row"><span>Total Due</span><span class="amt ${balance>0?'amt-neg':'amt-pos'}">₹${balance}</span></div>
+    </div>
+    <div class="section-title">Rental History</div>
+    <div class="summary-card">${rows}</div>`;
+  ov.classList.remove('hide');
+}
+function closeCustomerHistory(){
+  const ov=document.getElementById('customerHistoryOverlay');
+  if(ov) ov.classList.add('hide');
 }
 
 function rentalCardHTML(r){
@@ -3079,7 +3152,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.3').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.4').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
