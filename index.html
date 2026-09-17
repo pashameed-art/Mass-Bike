@@ -1078,17 +1078,36 @@
 </div>
 
 <script>
-const APP_VERSION = '4.6.2';
+const APP_VERSION = '4.6.3';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
 
 function loadBikes(){
-  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch(e){ return []; }
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw === null) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){ return []; }
 }
 function safeSet(key, value){
   try{
+    // DATA SAFETY: never silently replace a non-empty stored array with an empty one.
+    // Emptying data must happen only through an explicit user action (Clear Data / Restore).
+    const incoming = Array.isArray(value) ? value : null;
+    if(incoming && incoming.length === 0){
+      const existingRaw = localStorage.getItem(key);
+      if(existingRaw){
+        try{
+          const existing = JSON.parse(existingRaw);
+          if(Array.isArray(existing) && existing.length > 0){
+            console.warn('MASS BIKE blocked accidental empty overwrite for', key);
+            return false;
+          }
+        }catch(e){}
+      }
+    }
     localStorage.setItem(key, JSON.stringify(value));
     mirrorAutoBackup();
     return true;
@@ -1127,6 +1146,12 @@ function mirrorAutoBackup(){
       maintenance: JSON.parse(localStorage.getItem(MAINT_KEY)) || [],
       savedAt: new Date().toISOString()
     };
+    // Never replace a useful safety snapshot with an empty snapshot.
+    const total = snapshot.bikes.length + snapshot.rentals.length + snapshot.expenses.length + snapshot.maintenance.length;
+    if(total === 0){
+      const previous = localStorage.getItem('massBikeV4_autobackup');
+      if(previous) return;
+    }
     localStorage.setItem('massBikeV4_autobackup', JSON.stringify(snapshot));
   }catch(e){ /* best-effort only, never block the main save */ }
 }
@@ -1227,32 +1252,6 @@ function buildAndDownloadPdf(filename, lines){
 const EXPENSE_KEY = 'massBikeV4_expenses';
 const MAINT_KEY = 'massBikeV4_maintenance';
 
-const INSTALLED_FLAG_KEY = 'massBikeV4_installed';
-
-// V4.1 DATA SAFETY: one-time migration from the previous Mass Bike namespace.
-// Only Mass Bike's old massBikeV1_* keys are read; no Sale Profit Book keys are touched.
-(function migrateMassBikeV1ToV4(){
-  const pairs = [
-    ['massBikeV1_bikes', STORAGE_KEY],
-    ['massBikeV1_rentals', RENTAL_KEY],
-    ['massBikeV1_expenses', EXPENSE_KEY],
-    ['massBikeV1_maintenance', MAINT_KEY],
-    ['massBikeV1_invoiceCounter', INVOICE_COUNTER_KEY]
-  ];
-  try{
-    pairs.forEach(([oldKey,newKey])=>{
-      if(localStorage.getItem(newKey) === null){
-        const oldValue = localStorage.getItem(oldKey);
-        if(oldValue !== null) localStorage.setItem(newKey, oldValue);
-      }
-    });
-    if(localStorage.getItem('massBikeV4_installed') === null){
-      localStorage.setItem('massBikeV4_installed', JSON.stringify({version:'4.1', migratedAt:new Date().toISOString()}));
-    }
-  }catch(e){ /* migration is best-effort; normal app loading remains intact */ }
-})();
-
-
 
 function loadExpenses(){
   try{ return JSON.parse(localStorage.getItem(EXPENSE_KEY)) || []; }
@@ -1269,6 +1268,36 @@ function saveMaintList(list){
   safeSet(MAINT_KEY, list);
 }
 
+const INSTALLED_FLAG_KEY = 'massBikeV4_installed';
+
+// V4.6.3 DATA SAFETY: migrate before ANY data is loaded or first-run logic runs.
+// We only inspect Mass Bike namespaces. We never clear storage and never overwrite
+// a populated V4 key with an empty/invalid legacy value.
+(function migrateMassBikeDataSafely(){
+  const pairs = [
+    ['massBikeV1_bikes', STORAGE_KEY],
+    ['massBikeV1_rentals', RENTAL_KEY],
+    ['massBikeV1_expenses', EXPENSE_KEY],
+    ['massBikeV1_maintenance', MAINT_KEY],
+    ['massBikeV1_invoiceCounter', INVOICE_COUNTER_KEY]
+  ];
+  try{
+    pairs.forEach(([oldKey,newKey])=>{
+      const current = localStorage.getItem(newKey);
+      const legacy = localStorage.getItem(oldKey);
+      if(current === null && legacy !== null){
+        try{
+          const parsed = JSON.parse(legacy);
+          const useful = Array.isArray(parsed) ? parsed.length > 0 : (parsed !== null && parsed !== '');
+          if(useful) localStorage.setItem(newKey, legacy);
+        }catch(e){
+          if(newKey === INVOICE_COUNTER_KEY) localStorage.setItem(newKey, legacy);
+        }
+      }
+    });
+  }catch(e){ console.warn('MASS BIKE migration skipped:', e); }
+})();
+
 let bikes = loadBikes();
 
 // one-time migration: assign a permanent invoice number to any rental created
@@ -1281,9 +1310,6 @@ let bikes = loadBikes();
   saveRentals(updated);
 })();
 
-// V4.6 DATA LOAD FIX: migration above may have populated the V4 namespace
-// after the initial loadBikes() call. Reload so migrated data is immediately visible.
-bikes = loadBikes();
 
 let reportFilter = {type:'all', from:null, to:null};
 
@@ -1322,33 +1348,25 @@ function updateFilterButtonStyles(active){
   });
 }
 
-// self-heal: if primary bike data is empty but an auto-backup snapshot exists, restore from it
-// (prevents accidentally overwriting real data with demo seed data after a storage hiccup)
+// V4.6.3 SAFE RECOVERY: use only a non-empty safety snapshot on the same origin.
+// Never create demo/sample data and never mark the app installed before real data is loaded.
 if(bikes.length === 0){
   try{
     const backup = JSON.parse(localStorage.getItem('massBikeV4_autobackup'));
-    if(backup && Array.isArray(backup.bikes) && backup.bikes.length > 0){
+    const useful = backup && Array.isArray(backup.bikes) && backup.bikes.length > 0;
+    if(useful){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.bikes));
-      localStorage.setItem(RENTAL_KEY, JSON.stringify(backup.rentals || []));
-      localStorage.setItem(EXPENSE_KEY, JSON.stringify(backup.expenses || []));
-      localStorage.setItem(MAINT_KEY, JSON.stringify(backup.maintenance || []));
+      if(Array.isArray(backup.rentals)) localStorage.setItem(RENTAL_KEY, JSON.stringify(backup.rentals));
+      if(Array.isArray(backup.expenses)) localStorage.setItem(EXPENSE_KEY, JSON.stringify(backup.expenses));
+      if(Array.isArray(backup.maintenance)) localStorage.setItem(MAINT_KEY, JSON.stringify(backup.maintenance));
       bikes = backup.bikes;
-      alert('Data automatically restored from safety backup (dated ' + (backup.savedAt||'').slice(0,10) + ').');
+      console.info('MASS BIKE restored from same-origin safety snapshot.');
     }
-  }catch(e){ /* no valid backup available, fall through to normal seed */ }
+  }catch(e){ console.warn('MASS BIKE safety snapshot unavailable:', e); }
 }
 
-// seed sample data ONLY on a genuine first install (never repeats after that,
-// even if the user later deletes every bike — that's a real empty state, not first-run)
-if(bikes.length === 0 && !localStorage.getItem(INSTALLED_FLAG_KEY)){
-  bikes = [
-    {id: Date.now()+1, name:'Activa 6G', plate:'TN 63 AB 1234', status:'available', rate:300},
-    {id: Date.now()+2, name:'Pulsar 150', plate:'TN 63 CD 5678', status:'rented', rate:400},
-    {id: Date.now()+3, name:'Access 125', plate:'TN 63 EF 9012', status:'available', rate:280},
-  ];
-  saveBikes(bikes);
-}
-try{ localStorage.setItem(INSTALLED_FLAG_KEY, '1'); }catch(e){}
+// IMPORTANT: no demo seed. An empty app stays empty until the user adds/restores data.
+try{ localStorage.setItem(INSTALLED_FLAG_KEY, JSON.stringify({version:APP_VERSION, installedAt:new Date().toISOString()})); }catch(e){}
 
 // tabs
 document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
@@ -3246,7 +3264,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.6.2').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.6.3').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
