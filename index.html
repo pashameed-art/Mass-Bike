@@ -715,7 +715,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.6</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.6.2</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1078,7 +1078,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.6.1';
+const APP_VERSION = '4.6.2';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1227,6 +1227,33 @@ function buildAndDownloadPdf(filename, lines){
 const EXPENSE_KEY = 'massBikeV4_expenses';
 const MAINT_KEY = 'massBikeV4_maintenance';
 
+const INSTALLED_FLAG_KEY = 'massBikeV4_installed';
+
+// V4.1 DATA SAFETY: one-time migration from the previous Mass Bike namespace.
+// Only Mass Bike's old massBikeV1_* keys are read; no Sale Profit Book keys are touched.
+(function migrateMassBikeV1ToV4(){
+  const pairs = [
+    ['massBikeV1_bikes', STORAGE_KEY],
+    ['massBikeV1_rentals', RENTAL_KEY],
+    ['massBikeV1_expenses', EXPENSE_KEY],
+    ['massBikeV1_maintenance', MAINT_KEY],
+    ['massBikeV1_invoiceCounter', INVOICE_COUNTER_KEY]
+  ];
+  try{
+    pairs.forEach(([oldKey,newKey])=>{
+      if(localStorage.getItem(newKey) === null){
+        const oldValue = localStorage.getItem(oldKey);
+        if(oldValue !== null) localStorage.setItem(newKey, oldValue);
+      }
+    });
+    if(localStorage.getItem('massBikeV4_installed') === null){
+      localStorage.setItem('massBikeV4_installed', JSON.stringify({version:'4.1', migratedAt:new Date().toISOString()}));
+    }
+  }catch(e){ /* migration is best-effort; normal app loading remains intact */ }
+})();
+
+
+
 function loadExpenses(){
   try{ return JSON.parse(localStorage.getItem(EXPENSE_KEY)) || []; }
   catch(e){ return []; }
@@ -1313,31 +1340,6 @@ if(bikes.length === 0){
 
 // seed sample data ONLY on a genuine first install (never repeats after that,
 // even if the user later deletes every bike — that's a real empty state, not first-run)
-const INSTALLED_FLAG_KEY = 'massBikeV4_installed';
-
-// V4.1 DATA SAFETY: one-time migration from the previous Mass Bike namespace.
-// Only Mass Bike's old massBikeV1_* keys are read; no Sale Profit Book keys are touched.
-(function migrateMassBikeV1ToV4(){
-  const pairs = [
-    ['massBikeV1_bikes', STORAGE_KEY],
-    ['massBikeV1_rentals', RENTAL_KEY],
-    ['massBikeV1_expenses', EXPENSE_KEY],
-    ['massBikeV1_maintenance', MAINT_KEY],
-    ['massBikeV1_invoiceCounter', INVOICE_COUNTER_KEY]
-  ];
-  try{
-    pairs.forEach(([oldKey,newKey])=>{
-      if(localStorage.getItem(newKey) === null){
-        const oldValue = localStorage.getItem(oldKey);
-        if(oldValue !== null) localStorage.setItem(newKey, oldValue);
-      }
-    });
-    if(localStorage.getItem('massBikeV4_installed') === null){
-      localStorage.setItem('massBikeV4_installed', JSON.stringify({version:'4.1', migratedAt:new Date().toISOString()}));
-    }
-  }catch(e){ /* migration is best-effort; normal app loading remains intact */ }
-})();
-
 if(bikes.length === 0 && !localStorage.getItem(INSTALLED_FLAG_KEY)){
   bikes = [
     {id: Date.now()+1, name:'Activa 6G', plate:'TN 63 AB 1234', status:'available', rate:300},
@@ -3244,7 +3246,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.6.1').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.6.2').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
