@@ -1078,7 +1078,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.6';
+const APP_VERSION = '4.6.1';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1253,6 +1253,10 @@ let bikes = loadBikes();
   const updated = existingRentals.map(r => r.invoiceNo ? r : {...r, invoiceNo: getNextInvoiceNo()});
   saveRentals(updated);
 })();
+
+// V4.6 DATA LOAD FIX: migration above may have populated the V4 namespace
+// after the initial loadBikes() call. Reload so migrated data is immediately visible.
+bikes = loadBikes();
 
 let reportFilter = {type:'all', from:null, to:null};
 
@@ -3240,7 +3244,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.4').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.6.1').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
