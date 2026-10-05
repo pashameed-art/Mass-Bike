@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4.5</title>
+<title>MASS BIKE V4.7.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -659,7 +659,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.6</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.7.0</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -674,6 +674,18 @@
       <div style="margin-top:14px;">
         <button class="btn btn-primary btn-block" onclick="downloadBackup()">Download Backup File</button>
       </div>
+    </div>
+
+    <div class="section-title">☁️ Google Drive Backup</div>
+    <div class="empty" style="background:#fff;border-style:solid;">
+      <span class="big">☁️</span>
+      <div id="gdLast" style="font-size:12.5px;"></div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-primary btn-block" onclick="gdBackup()">Backup to Drive</button>
+        <button class="btn btn-outline btn-block" onclick="gdShowList()">Restore from Drive</button>
+      </div>
+      <div id="gdSt" style="margin-top:10px;font-size:12.5px;"></div>
+      <div id="gdList"></div>
     </div>
 
     <div class="section-title">Restore Data</div>
@@ -715,7 +727,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.6.2</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.7.0</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1078,7 +1090,7 @@
 </div>
 
 <script>
-const APP_VERSION = '4.6.3';
+const APP_VERSION = '4.7.0';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1091,12 +1103,12 @@ function loadBikes(){
     return Array.isArray(parsed) ? parsed : [];
   }catch(e){ return []; }
 }
-function safeSet(key, value){
+function safeSet(key, value, allowEmpty){
   try{
     // DATA SAFETY: never silently replace a non-empty stored array with an empty one.
     // Emptying data must happen only through an explicit user action (Clear Data / Restore).
     const incoming = Array.isArray(value) ? value : null;
-    if(incoming && incoming.length === 0){
+    if(incoming && incoming.length === 0 && !allowEmpty){
       const existingRaw = localStorage.getItem(key);
       if(existingRaw){
         try{
@@ -1109,7 +1121,7 @@ function safeSet(key, value){
       }
     }
     localStorage.setItem(key, JSON.stringify(value));
-    mirrorAutoBackup();
+    mirrorAutoBackup(!!allowEmpty);
     return true;
   }catch(e){
     alert('⚠️ Save பண்ண முடியலை! Storage full-ஆ இருக்கலாம். Data loss ஆகாம இருக்க, Backup tab-க்கு போய் உடனே Download Backup File பண்ணி பாருங்க.\n\n⚠️ Save failed! Storage may be full. Please go to Backup tab and download a backup immediately.');
@@ -1137,7 +1149,7 @@ function transactionalSet(entries){
     return false;
   }
 }
-function mirrorAutoBackup(){
+function mirrorAutoBackup(force){
   try{
     const snapshot = {
       bikes: JSON.parse(localStorage.getItem(STORAGE_KEY)) || [],
@@ -1150,20 +1162,21 @@ function mirrorAutoBackup(){
     const total = snapshot.bikes.length + snapshot.rentals.length + snapshot.expenses.length + snapshot.maintenance.length;
     if(total === 0){
       const previous = localStorage.getItem('massBikeV4_autobackup');
+      if(force){ localStorage.removeItem('massBikeV4_autobackup'); return; }
       if(previous) return;
     }
     localStorage.setItem('massBikeV4_autobackup', JSON.stringify(snapshot));
   }catch(e){ /* best-effort only, never block the main save */ }
 }
-function saveBikes(bikes){
-  safeSet(STORAGE_KEY, bikes);
+function saveBikes(bikes, allowEmpty){
+  safeSet(STORAGE_KEY, bikes, allowEmpty);
 }
 function loadRentals(){
   try{ return JSON.parse(localStorage.getItem(RENTAL_KEY)) || []; }
   catch(e){ return []; }
 }
-function saveRentals(rentals){
-  safeSet(RENTAL_KEY, rentals);
+function saveRentals(rentals, allowEmpty){
+  safeSet(RENTAL_KEY, rentals, allowEmpty);
 }
 function todayStr(){
   // Always compute today's date in IST (UTC+5:30), regardless of the device's own
@@ -1257,15 +1270,15 @@ function loadExpenses(){
   try{ return JSON.parse(localStorage.getItem(EXPENSE_KEY)) || []; }
   catch(e){ return []; }
 }
-function saveExpenses(list){
-  safeSet(EXPENSE_KEY, list);
+function saveExpenses(list, allowEmpty){
+  safeSet(EXPENSE_KEY, list, allowEmpty);
 }
 function loadMaintList(){
   try{ return JSON.parse(localStorage.getItem(MAINT_KEY)) || []; }
   catch(e){ return []; }
 }
-function saveMaintList(list){
-  safeSet(MAINT_KEY, list);
+function saveMaintList(list, allowEmpty){
+  safeSet(MAINT_KEY, list, allowEmpty);
 }
 
 const INSTALLED_FLAG_KEY = 'massBikeV4_installed';
@@ -2246,7 +2259,7 @@ function deleteBike(id){
   }
   if(!confirm(`Delete ${bike.name}?\n\n${bike.plate}\n\nAre you sure?`)) return;
   const list = loadBikes().filter(b=>b.id!==id);
-  saveBikes(list);
+  saveBikes(list, true);
   render();
 }
 
@@ -2508,7 +2521,7 @@ function deleteExpense(id){
   const e = loadExpenses().find(x=>x.id===id);
   if(!e) return;
   if(!confirm(`Delete ${e.category} expense?\n\n₹${e.amount} · ${formatDMY(e.date)}\n\nAre you sure?`)) return;
-  saveExpenses(loadExpenses().filter(x=>x.id!==id));
+  saveExpenses(loadExpenses().filter(x=>x.id!==id), true);
   render();
 }
 
@@ -2575,7 +2588,7 @@ function deleteMaint(id){
   const m = loadMaintList().find(x=>x.id===id);
   if(!m) return;
   if(!confirm(`Delete ${m.type} record?\n\n${m.bikeName} · ${formatDMY(m.date)}\n\nAre you sure?`)) return;
-  saveMaintList(loadMaintList().filter(x=>x.id!==id));
+  saveMaintList(loadMaintList().filter(x=>x.id!==id), true);
   render();
 }
 
@@ -3013,10 +3026,11 @@ function resetAllData(){
   const secondConfirm = confirm('கடைசி தடவை கேட்கிறேன் — இது Undo செய்ய முடியாது!\n\nFinal warning — this CANNOT be undone!\n\nType-check: Are you absolutely sure you want to delete everything?');
   if(!secondConfirm) return;
 
-  saveBikes([]);
-  saveRentals([]);
-  saveExpenses([]);
-  saveMaintList([]);
+  downloadBackup('before-reset');
+  saveBikes([], true);
+  saveRentals([], true);
+  saveExpenses([], true);
+  saveMaintList([], true);
   try{
     localStorage.removeItem(INVOICE_COUNTER_KEY);
     localStorage.removeItem('massBikeV4_autobackup');
@@ -3058,35 +3072,67 @@ function exportCSV(type){
   downloadCSVFile(filename, rowsToCSV(headers, rows));
 }
 
-function downloadBackup(){
+function bikeBackupData(){
   const bikesData = loadBikes();
   const rentalsData = loadRentals();
   const expensesData = loadExpenses();
   const maintenanceData = loadMaintList();
   const payload = { bikes: bikesData, rentals: rentalsData, expenses: expensesData, maintenance: maintenanceData };
-  const data = {
+  return {
     exportedAt: new Date().toISOString(),
     app: 'MASS BIKE',
     version: APP_VERSION,
-    recordCounts: {
-      bikes: bikesData.length,
-      rentals: rentalsData.length,
-      expenses: expensesData.length,
-      maintenance: maintenanceData.length
-    },
+    recordCounts: { bikes: bikesData.length, rentals: rentalsData.length, expenses: expensesData.length, maintenance: maintenanceData.length },
     checksum: simpleChecksum(JSON.stringify(payload)),
     ...payload
   };
+}
+function downloadBackup(tag){
+  const data = bikeBackupData();
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const stamp = todayStr().replace(/-/g,'');
   a.href = url;
-  a.download = `mass-bike-backup-${stamp}.json`;
+  a.download = `mass-bike-${typeof tag === 'string' ? tag : 'backup'}-${stamp}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+}
+
+function applyBackupData(data){
+  if(!data || !Array.isArray(data.bikes) || ['rentals','expenses','maintenance'].some(k => data[k] != null && !Array.isArray(data[k]))){
+    alert('This does not look like a valid MASS BIKE backup file.');
+    return false;
+  }
+  let integrityWarning = '';
+  if(data.checksum){
+    const payload = { bikes: data.bikes||[], rentals: data.rentals||[], expenses: data.expenses||[], maintenance: data.maintenance||[] };
+    if(simpleChecksum(JSON.stringify(payload)) !== data.checksum){
+      integrityWarning = '\n\n⚠️ CHECKSUM MISMATCH — இந்த file corrupt ஆகி இருக்கலாம்! / This file may be corrupted!';
+    }
+  }
+  if(data.recordCounts){
+    const rc = data.recordCounts;
+    if(rc.bikes !== (data.bikes||[]).length || rc.rentals !== (data.rentals||[]).length ||
+       rc.expenses !== (data.expenses||[]).length || rc.maintenance !== (data.maintenance||[]).length){
+      integrityWarning += '\n\n⚠️ RECORD COUNT MISMATCH — Data incomplete-ஆ இருக்கலாம்!';
+    }
+  }
+  if(!confirm(`Backup Version: ${data.version || 'unknown'} · App Version: ${APP_VERSION}\nRecords: ${(data.bikes||[]).length} bikes, ${(data.rentals||[]).length} rentals, ${(data.expenses||[]).length} expenses, ${(data.maintenance||[]).length} maintenance${integrityWarning}\n\nRestore செய்தால் தற்போதைய data மாற்றப்படும். தொடரவா? (முன்னதாக தற்போதைய data-வின் backup file தானாக download ஆகும்.)\nContinue? Your current data will be downloaded as a backup first.`)) return false;
+  downloadBackup('before-restore');
+  const okLocalRestore = transactionalSet([
+    {key: STORAGE_KEY, value: data.bikes || []},
+    {key: RENTAL_KEY, value: data.rentals || []},
+    {key: EXPENSE_KEY, value: data.expenses || []},
+    {key: MAINT_KEY, value: data.maintenance || []}
+  ]);
+  if(!okLocalRestore) return false;
+  (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r && r.invoiceNo));
+  alert('Restore complete!');
+  render();
+  return true;
 }
 
 function restoreBackup(event){
@@ -3095,40 +3141,7 @@ function restoreBackup(event){
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      const data = JSON.parse(e.target.result);
-      if(!data.bikes || !Array.isArray(data.bikes)){
-        alert('This does not look like a valid MASS BIKE backup file.');
-        return;
-      }
-
-      // integrity check: recompute checksum and compare record counts
-      let integrityWarning = '';
-      if(data.checksum){
-        const payload = { bikes: data.bikes||[], rentals: data.rentals||[], expenses: data.expenses||[], maintenance: data.maintenance||[] };
-        const recomputed = simpleChecksum(JSON.stringify(payload));
-        if(recomputed !== data.checksum){
-          integrityWarning = '\n\n⚠️ CHECKSUM MISMATCH — இந்த file corrupt ஆகி இருக்கலாம்! / This file may be corrupted!';
-        }
-      }
-      if(data.recordCounts){
-        const rc = data.recordCounts;
-        if(rc.bikes !== (data.bikes||[]).length || rc.rentals !== (data.rentals||[]).length ||
-           rc.expenses !== (data.expenses||[]).length || rc.maintenance !== (data.maintenance||[]).length){
-          integrityWarning += '\n\n⚠️ RECORD COUNT MISMATCH — Data incomplete-ஆ இருக்கலாம்!';
-        }
-      }
-
-      if(!confirm(`Backup Version: ${data.version || 'unknown'} · App Version: ${APP_VERSION}\nRecords: ${(data.bikes||[]).length} bikes, ${(data.rentals||[]).length} rentals, ${(data.expenses||[]).length} expenses, ${(data.maintenance||[]).length} maintenance${integrityWarning}\n\nஇது உங்கள் தற்போதைய data-ஐ முழுவதும் மாற்றிவிடும். தொடரவா? / This will replace all current data. Continue?`)) return;
-      const okLocalRestore = transactionalSet([
-        {key: STORAGE_KEY, value: data.bikes || []},
-        {key: RENTAL_KEY, value: data.rentals || []},
-        {key: EXPENSE_KEY, value: data.expenses || []},
-        {key: MAINT_KEY, value: data.maintenance || []}
-      ]);
-      if(!okLocalRestore) return;
-      (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r.invoiceNo));
-      alert('Restore complete!');
-      render();
+      applyBackupData(JSON.parse(e.target.result));
     }catch(err){
       alert('Could not read this backup file. Please choose a valid backup.');
     }
@@ -3137,7 +3150,87 @@ function restoreBackup(event){
   reader.readAsText(file);
 }
 
+// ---- Google Drive backup (same Google client as Sale Profit Book; files are named MASS-BIKE-Backup-*) ----
+const GD_CID='123737120474-8sqc1sb4p0i9j7s9nq56j4gkd784lm1n.apps.googleusercontent.com', GD_PRE='MASS-BIKE-Backup-', GD_KEEP=10, GD_AT='massBikeV4_lastGDriveBackupAt';
+let gdTok=null, gdExp=0, gdCli=null;
+function gdStatus(m, ok){ const s=document.getElementById('gdSt'); if(s){ s.textContent=m; s.style.color = ok===false ? '#b91c1c' : '#126d66'; } }
+function gdLastUI(){ const e=document.getElementById('gdLast'); if(!e) return; let v=null; try{ v=localStorage.getItem(GD_AT); }catch(x){} e.textContent='Last Drive backup: ' + (v ? new Date(v).toLocaleString('en-IN') : 'none yet'); }
+function gdLoad(){ return new Promise((ok,no)=>{
+  if(window.google && google.accounts && google.accounts.oauth2) return ok();
+  const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true;
+  s.onload=()=>ok(); s.onerror=()=>no(new Error('Google library could not load (check internet)')); document.head.appendChild(s);
+}); }
+async function gdToken(){
+  if(gdTok && Date.now() < gdExp) return gdTok;
+  await gdLoad();
+  return new Promise((ok,no)=>{
+    const cb = r => { if(r && r.access_token){ gdTok=r.access_token; gdExp=Date.now()+Math.max(60,(Number(r.expires_in)||3600)-120)*1000; ok(gdTok); } else no(new Error('Google authorization failed. If this page is inside another app, open it in its own tab.')); };
+    try{
+      if(!gdCli) gdCli = google.accounts.oauth2.initTokenClient({client_id:GD_CID, scope:'https://www.googleapis.com/auth/drive.file', callback:cb});
+      else gdCli.callback = cb;
+      gdCli.requestAccessToken({prompt:''});
+    }catch(e){ no(e); }
+  });
+}
+async function gdList(tok){
+  const q="trashed = false and mimeType = 'application/json'"; let f=[], pt='';
+  do{
+    const r = await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&spaces=drive&pageSize=100&fields='+encodeURIComponent('nextPageToken,files(id,name,createdTime)')+(pt?'&pageToken='+encodeURIComponent(pt):''), {headers:{Authorization:'Bearer '+tok}});
+    if(!r.ok) throw new Error('Could not list Drive files');
+    const d = await r.json(); f = f.concat(d.files||[]); pt = d.nextPageToken||'';
+  }while(pt && f.length<500);
+  return f.filter(x => (x.name||'').indexOf(GD_PRE)===0);
+}
+async function gdBackup(){
+  try{
+    const data = bikeBackupData();
+    if(!(data.bikes.length + data.rentals.length + data.expenses.length + data.maintenance.length)){ alert('Backup செய்ய data இல்லை. / No data to back up.'); return; }
+    gdStatus('Connecting to Google Drive…');
+    const tok = await gdToken(), now = new Date(), pad = n => String(n).padStart(2,'0');
+    const name = GD_PRE+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'_'+pad(now.getHours())+'-'+pad(now.getMinutes())+'-'+pad(now.getSeconds())+'.json';
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({name, mimeType:'application/json'})], {type:'application/json'}));
+    form.append('file', new Blob([JSON.stringify(data, null, 1)], {type:'application/json'}));
+    gdStatus('Uploading…');
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {method:'POST', headers:{Authorization:'Bearer '+tok}, body:form});
+    if(!r.ok) throw new Error('Drive upload failed');
+    const id = (await r.json().catch(()=>({}))).id;
+    try{ localStorage.setItem(GD_AT, now.toISOString()); }catch(x){}
+    gdLastUI();
+    try{
+      const files = (await gdList(tok)).sort((a,b)=> a.name<b.name ? 1 : -1);
+      for(const f of files.slice(GD_KEEP)){ if(f.id===id) continue; await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(f.id), {method:'PATCH', headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})}); }
+    }catch(e){}
+    gdStatus('✅ Drive backup done: '+name);
+  }catch(e){ gdStatus('❌ '+(e.message||e), false); }
+}
+async function gdShowList(){
+  try{
+    gdStatus('Looking for Drive backups…');
+    const tok = await gdToken();
+    const f = (await gdList(tok)).sort((a,b)=> String(b.createdTime).localeCompare(String(a.createdTime))).slice(0,10);
+    const box = document.getElementById('gdList'); box.innerHTML='';
+    f.forEach(x=>{
+      const row=document.createElement('div'); row.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #e5e7eb;text-align:left';
+      const info=document.createElement('div'); info.style.fontSize='12px'; info.textContent=x.name+' • '+new Date(x.createdTime).toLocaleString('en-IN');
+      const btn=document.createElement('button'); btn.className='btn btn-outline btn-sm'; btn.textContent='Restore'; btn.onclick=()=>gdRestore(x.id);
+      row.appendChild(info); row.appendChild(btn); box.appendChild(row);
+    });
+    gdStatus(f.length ? 'Choose a backup to restore.' : 'No backup files found in Drive.');
+  }catch(e){ gdStatus('❌ '+(e.message||e), false); }
+}
+async function gdRestore(id){
+  try{
+    const tok = await gdToken();
+    const r = await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?alt=media', {headers:{Authorization:'Bearer '+tok}});
+    if(!r.ok) throw new Error('Could not download the file');
+    const data = await r.json();
+    if(applyBackupData(data)) gdStatus('✅ Restored from Drive.'); else gdStatus('Restore cancelled.');
+  }catch(e){ gdStatus('❌ '+(e.message||e), false); }
+}
+
 render();
+gdLastUI();
 
 // ---- In-app Daily Due Reminder (replaces browser notifications) ----
 function getDueSummary(){
@@ -3264,7 +3357,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.6.3').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.7.0').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
