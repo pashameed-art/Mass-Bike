@@ -2,7 +2,7 @@
 <html lang="ta">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0B3D3E">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4.8.0</title>
+<title>MASS BIKE V4.9.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -626,8 +626,6 @@
       <div id="repBikeList"></div>
       <div class="section-title">💰 Revenue / Collection / Due Summary</div>
       <div id="repFinancialSummary"></div>
-      <div class="section-title">🏍️ Bike-wise Income & Collection</div>
-      <div id="repBikeList"></div>
       <div class="section-title">👥 Customer-wise Outstanding</div>
       <div id="repCustomerOutstanding"></div>
       <div class="section-title">💸 Expense Summary</div>
@@ -651,7 +649,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.8.0</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.9.0</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -702,6 +700,13 @@
       </div>
     </div>
 
+    <div class="section-title">🔄 App Update</div>
+    <div class="empty" style="background:#fff;border-style:solid;">
+      <span class="big">🔄</span>
+      <div style="font-size:12.5px;">புதிய version வரவில்லை என்றால் இதைத் தட்டுங்கள்<br>Your data is not deleted.</div>
+      <div style="margin-top:14px;"><button class="btn btn-outline btn-block" onclick="appRefresh()">Update / Refresh App</button></div>
+    </div>
+
     <div class="section-title">Reset All Data</div>
     <div class="alert-card">
       <div class="alert-head">⚠️ Start Fresh</div>
@@ -719,7 +724,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.8.0</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.9.0</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1082,8 +1087,8 @@
 </div>
 
 <script>
-let __repSink; // report cards removed in V4.8.0; old calculations write here and are discarded
-const APP_VERSION = '4.8.0';
+let __repSink; // report cards removed in V4.9.0; old calculations write here and are discarded
+const APP_VERSION = '4.9.0';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1993,9 +1998,10 @@ function maintCardHTML(m){
   </div>`;
 }
 
+const encq=s=>encodeURIComponent(String(s)).replace(/'/g,'%27');
 function customerCardHTML(c){
   const isRepeat = c.rentalCount >= 2;
-  const key = encodeURIComponent(c.key || ((c.name||'').trim().toLowerCase() + '|' + (c.phone||'').replace(/\D/g,'')));
+  const key = encq(c.key || ((c.name||'').trim().toLowerCase() + '|' + (c.phone||'').replace(/\D/g,'')));
   return `
   <div class="bike-card">
     <div class="bike-left">
@@ -2008,8 +2014,8 @@ function customerCardHTML(c){
         </div>
         <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="openCustomerHistory('${key}')">📋 History</button>
-          ${c.phone ? `<button class="btn btn-outline btn-sm" onclick="callCustomerByPhone('${encodeURIComponent(c.phone)}')">📞 Call</button>` : ''}
-          ${c.phone ? `<button class="btn btn-primary btn-sm" onclick="whatsAppCustomer('${encodeURIComponent(c.phone)}','${encodeURIComponent(c.name||'')}')">📲 WhatsApp</button>` : ''}
+          ${c.phone ? `<button class="btn btn-outline btn-sm" onclick="callCustomerByPhone('${encq(c.phone)}')">📞 Call</button>` : ''}
+          ${c.phone ? `<button class="btn btn-primary btn-sm" onclick="whatsAppCustomer('${encq(c.phone)}','${encq(c.name||'')}')">📲 WhatsApp</button>` : ''}
         </div>
       </div>
     </div>
@@ -2283,6 +2289,11 @@ function saveAddPayment(){
   const note = document.getElementById('paymentNote').value.trim();
 
   if(amount <= 0){ alert('Please enter a valid payment amount'); return; }
+  const _rn = loadRentals().find(r=>r.id === rentalId);
+  if(_rn && _rn.status === 'active'){
+    const _due = roundMoney(calcDays(_rn.startDate, todayStr()) * (_rn.rate||0) - totalPaidSoFar(_rn));
+    if(amount > _due + 0.005 && !confirm(`இந்த payment (₹${amount}) இப்போதைய மீதித் தொகையை (₹${Math.max(_due,0)}) விட அதிகம்.\n\nThis payment is more than the current due (₹${Math.max(_due,0)}). Continue?`)) return;
+  }
 
   const rentals = loadRentals();
   const updated = rentals.map(r=>{
@@ -2339,6 +2350,8 @@ function saveRentEntry(){
     return;
   }
 
+  if(advance < 0 || rate < 0){ alert('Advance / Rate எதிர்மறையாக இருக்கக்கூடாது / Advance and rate cannot be negative.'); return; }
+  const counterBefore = localStorage.getItem(INVOICE_COUNTER_KEY);
   const rentals = loadRentals();
   rentals.push({
     id: Date.now(),
@@ -2355,7 +2368,7 @@ function saveRentEntry(){
     {key: RENTAL_KEY, value: rentals},
     {key: STORAGE_KEY, value: updatedBikes}
   ]);
-  if(!ok) return;
+  if(!ok){ try{ if(counterBefore === null) localStorage.removeItem(INVOICE_COUNTER_KEY); else localStorage.setItem(INVOICE_COUNTER_KEY, counterBefore); }catch(e){} return; }
 
   closeRentModal();
   document.getElementById('rentalSearchInput').value = '';
@@ -2420,6 +2433,9 @@ function saveReturnEntry(){
     return;
   }
 
+  if(totalAmount < 0 || discount < 0 || received < 0 || fine < 0){ alert('தொகைகள் எதிர்மறையாக இருக்கக்கூடாது / Amounts cannot be negative.'); return; }
+  const _bal = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
+  if(_bal < -0.005 && !confirm(`வாடிக்கையாளர் ₹${Math.abs(_bal)} அதிகமாகக் கொடுத்துள்ளார் (Balance எதிர்மறை).\n\nCustomer has paid ₹${Math.abs(_bal)} more than the bill. Continue?`)) return;
   const balance = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
 
   const updatedRentals = rentals.map(r =>
@@ -2676,6 +2692,7 @@ function saveEditActiveRental(){
   const rate = parseFloat(document.getElementById('editActiveRate').value) || 0;
   const advance = parseFloat(document.getElementById('editActiveAdvance').value) || 0;
 
+  if(advance < 0 || rate < 0){ alert('Advance / Rate எதிர்மறையாக இருக்கக்கூடாது / Advance and rate cannot be negative.'); return; }
   if(!customerName){ alert('Customer name is required'); return; }
   const phoneDigits = normalizePhone(customerPhone);
   if(!phoneDigits || phoneDigits.length !== 10){
@@ -2764,6 +2781,9 @@ function saveEditReturnedRental(){
   const rentals = loadRentals();
   const rental = rentals.find(r=>r.id===id);
   if(!rental) return;
+  if(totalAmount < 0 || discount < 0 || received < 0 || fine < 0){ alert('தொகைகள் எதிர்மறையாக இருக்கக்கூடாது / Amounts cannot be negative.'); return; }
+  const _bal = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
+  if(_bal < -0.005 && !confirm(`வாடிக்கையாளர் ₹${Math.abs(_bal)} அதிகமாகக் கொடுத்துள்ளார் (Balance எதிர்மறை).\n\nCustomer has paid ₹${Math.abs(_bal)} more than the bill. Continue?`)) return;
   const balance = roundMoney(totalAmount + fine - discount - totalPaidSoFar(rental) - received);
 
   const updated = rentals.map(r => r.id === id ? {...r, totalAmount, fine, discount, received, balance} : r);
@@ -3065,6 +3085,16 @@ function exportCSV(type){
   downloadCSVFile(filename, rowsToCSV(headers, rows));
 }
 
+async function appRefresh(){
+  try{
+    const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+    const rs=await navigator.serviceWorker.getRegistrations();
+    for(const r of rs){ if(r.scope.indexOf(base)===0) await r.unregister(); }
+    for(const k of await caches.keys()) await caches.delete(k);
+  }catch(e){}
+  location.reload();
+}
+
 function bikeBackupData(){
   const bikesData = loadBikes();
   const rentalsData = loadRentals();
@@ -3350,7 +3380,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.8.0').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.9.0').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
