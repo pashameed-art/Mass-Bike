@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4.9.0</title>
+<title>MASS BIKE V4.10.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -503,6 +503,7 @@
       <button class="btn btn-outline btn-block" onclick="selectMenuTab('bikes')">🏍️ Bikes</button>
       <button class="btn btn-outline btn-block" onclick="selectMenuTab('expenses')">💸 Expenses</button>
       <button class="btn btn-outline btn-block" onclick="selectMenuTab('maintenance')">🛠️ Maintenance</button>
+      <button class="btn btn-outline btn-block" onclick="selectMenuTab('challans')">🚨 Challans</button>
       <button class="btn btn-outline btn-block" onclick="selectMenuTab('customers')">👥 Customers</button>
       <button class="btn btn-outline btn-block" onclick="selectMenuTab('backup')">💾 Backup</button>
     </div>
@@ -536,6 +537,7 @@
       Gross Revenue = Returned rentals-ன் billed total · Cash Collected = Advance + recorded payments + Returned-ல் received · Pending Receivable = Active rentals-ல் இன்னும் வராத rent · Net Profit = Gross Rental Revenue − Expenses · Outstanding = Returned rentals-ல் balance
     </div>
     <div id="longPendingSection"></div>
+    <div id="challanAlertSection"></div>
     <div id="returnedPendingSection"></div>
     <div id="serviceDueSection"></div>
     <div class="section-title">Recently Added</div>
@@ -601,6 +603,18 @@
     <div id="maintList"></div>
   </section>
 
+  <!-- CHALLANS -->
+  <section id="tab-challans" class="hide">
+    <div id="challanSummary"></div>
+    <div class="section-title">🔎 e-Challan சரிபார்ப்பு (வாரம் ஒருமுறை)</div>
+    <div id="challanCheckList"></div>
+    <div class="addbar">
+      <button class="btn btn-primary btn-block" onclick="openChallanModal()">+ Add Challan / Fine</button>
+    </div>
+    <div class="section-title">Challan Log</div>
+    <div id="challanList"></div>
+  </section>
+
   <!-- REPORTS -->
   <section id="tab-reports" class="hide">
     <div class="searchbar" style="gap:6px;">
@@ -649,7 +663,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.9.0</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.10.1</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -724,7 +738,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.9.0</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.10.1</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1086,9 +1100,45 @@
   </div>
 </div>
 
+<div class="overlay hide" id="challanModalOverlay">
+  <div class="modal">
+    <h3 id="challanModalTitle">Add Challan / Fine</h3>
+    <input type="hidden" id="editChallanId">
+    <div class="field">
+      <label>Bike</label>
+      <select id="cBike" onchange="refreshChallanWho()"></select>
+    </div>
+    <div class="field">
+      <label>Challan Date (அபராதம் விதிக்கப்பட்ட நாள்)</label>
+      <input type="date" id="cDate" onchange="refreshChallanWho()">
+    </div>
+    <div class="field">
+      <label>Customer (அந்த நாளில் வாடகையில் இருந்தவர்)</label>
+      <select id="cWho"></select>
+      <div id="cWhoInfo" style="font-size:12px;margin-top:6px;color:#6b6556;"></div>
+    </div>
+    <div class="field">
+      <label>Fine Amount (₹)</label>
+      <input type="number" id="cAmount" placeholder="e.g. 500" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label>Reason / Place (optional)</label>
+      <input type="text" id="cReason" placeholder="e.g. Helmet, signal jump, Salem">
+    </div>
+    <div class="field">
+      <label>Challan No (optional)</label>
+      <input type="text" id="cNo" placeholder="e.g. TN12345678">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeChallanModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveChallan()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
-let __repSink; // report cards removed in V4.9.0; old calculations write here and are discarded
-const APP_VERSION = '4.9.0';
+let __repSink; // report cards removed in V4.10.1; old calculations write here and are discarded
+const APP_VERSION = '4.10.1';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -1195,6 +1245,7 @@ function nowIST(){
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   return new Date(Date.now() + IST_OFFSET_MS);
 }
+function waPhone(p){ const d = String(p||'').replace(/\D/g,''); return d.length === 10 ? '91' + d : d; }
 function normalizePhone(input){
   let digits = (input||'').replace(/\D/g,'');
   if(digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
@@ -1566,6 +1617,8 @@ function render(){
   document.getElementById('maintList').innerHTML = maintRecords.length
     ? maintRecords.map(maintCardHTML).join('')
     : `<div class="empty"><span class="big">🛠️</span>No maintenance records found</div>`;
+
+  renderChallans();
 
   // reports (all-time, for dashboard profit)
   const allTimeIncome = roundMoney(history.reduce((s,r)=>s+netRentalIncome(r),0));
@@ -2032,7 +2085,7 @@ function whatsAppCustomer(encodedPhone, encodedName){
   const name = decodeURIComponent(encodedName||'');
   if(!phone) return;
   const text = `வணக்கம் ${name}, MASS BIKE rental தொடர்பாக தொடர்பு கொள்கிறோம்.`;
-  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
+  window.open('https://wa.me/' + waPhone(phone) +'?text='+encodeURIComponent(text),'_blank');
 }
 
 function openCustomerHistory(encodedKey){
@@ -2903,7 +2956,7 @@ function shareReceiptWhatsApp(){
   text += `${balance>0?'⚠️ Balance Amount (PENDING)':'Balance Amount'}: ₹${balance}\n`;
 
   const phone = (r.customerPhone||'').replace(/\D/g,'');
-  const url = 'https://wa.me/' + (phone ? phone : '') + '?text=' + encodeURIComponent(text);
+  const url = 'https://wa.me/' + waPhone(phone) + '?text=' + encodeURIComponent(text);
   window.open(url, '_blank');
 }
 
@@ -3047,6 +3100,8 @@ function resetAllData(){
   try{
     localStorage.removeItem(INVOICE_COUNTER_KEY);
     localStorage.removeItem('massBikeV4_autobackup');
+    localStorage.removeItem(CHALLAN_KEY);
+    localStorage.removeItem(CHALLAN_CHECK_KEY);
   }catch(e){}
 
   alert('எல்லா data-வும் நீக்கப்பட்டது. Fresh-ஆ ஆரம்பிக்கலாம்! / All data cleared. You can start fresh now!');
@@ -3095,6 +3150,234 @@ async function appRefresh(){
   location.reload();
 }
 
+
+// ================= CHALLANS / FINES (V4.10.1) =================
+// e-Challan sites cannot be queried automatically from a phone-only app (government captcha, no public API),
+// so: (1) one tap opens the official site with the plate copied, and a weekly "check due" reminder shows in-app;
+// (2) when a challan is entered, the app finds which customer had that bike on that date.
+const CHALLAN_KEY = 'massBikeV4_challans';
+const CHALLAN_CHECK_KEY = 'massBikeV4_challanChecks';
+const ECHALLAN_URL = 'https://echallan.parivahan.gov.in/index/accused-challan';
+const CHALLAN_CHECK_DAYS = 7;
+function loadChallans(){
+  try{ const a = JSON.parse(localStorage.getItem(CHALLAN_KEY) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+function saveChallans(list){
+  try{ localStorage.setItem(CHALLAN_KEY, JSON.stringify(list)); return true; }
+  catch(e){ alert('Challan data சேமிக்க முடியவில்லை (storage நிரம்பியிருக்கலாம்).'); return false; }
+}
+function loadChallanChecks(){
+  try{ const o = JSON.parse(localStorage.getItem(CHALLAN_CHECK_KEY) || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }catch(e){ return {}; }
+}
+function saveChallanChecks(o){ try{ localStorage.setItem(CHALLAN_CHECK_KEY, JSON.stringify(o)); }catch(e){} }
+
+function rentalsOnDate(bikeId, date){
+  return loadRentals().filter(r =>
+    r.bikeId === bikeId && r.startDate && r.startDate <= date &&
+    (r.status === 'active' || !r.returnDate || r.returnDate >= date)
+  ).sort((a,b)=> (b.startDate||'').localeCompare(a.startDate||'') || (b.id - a.id));
+}
+function refreshChallanWho(keepRentalId){
+  const bikeId = parseInt(document.getElementById('cBike').value);
+  const date = document.getElementById('cDate').value;
+  const sel = document.getElementById('cWho');
+  const info = document.getElementById('cWhoInfo');
+  let cands = (bikeId && date) ? rentalsOnDate(bikeId, date) : [];
+  if(keepRentalId && !cands.some(r=>r.id === keepRentalId)){
+    const kept = loadRentals().find(r=>r.id === keepRentalId);
+    if(kept) cands = [kept, ...cands];
+  }
+  sel.innerHTML = cands.map(r =>
+    `<option value="${r.id}">${escapeHTML(r.customerName||'')} · ${escapeHTML(r.customerPhone||'-')} · ${formatDMY(r.startDate)}${r.returnDate ? ' → '+formatDMY(r.returnDate) : ' → இப்போது'}</option>`
+  ).join('') + `<option value="0">— வாடகையில் இல்லை / உரிமையாளர் பொறுப்பு —</option>`;
+  if(keepRentalId !== undefined && keepRentalId !== null) sel.value = String(keepRentalId || 0);
+  info.textContent = !(bikeId && date) ? ''
+    : cands.length === 0 ? 'அந்த நாளில் இந்த பைக் வாடகையில் இல்லை — உரிமையாளர் பொறுப்பு.'
+    : cands.length === 1 ? '✓ அந்த நாளில் இந்த பைக்கை வைத்திருந்தவர் தானாகக் கண்டுபிடிக்கப்பட்டார்.'
+    : '⚠️ அந்த நாளில் ஒன்றுக்கு மேற்பட்டோர் உள்ளனர் (ஒப்படைத்த நாள்). சரியானவரைத் தேர்ந்தெடுக்கவும்.';
+}
+function fillChallanBikes(selectedId){
+  const bikes = loadBikes();
+  const sel = document.getElementById('cBike');
+  sel.innerHTML = bikes.map(b=>`<option value="${b.id}">${escapeHTML(b.name)} (${escapeHTML(b.plate)})</option>`).join('');
+  if(selectedId) sel.value = String(selectedId);
+}
+function openChallanModal(){
+  if(loadBikes().length === 0){ alert('Please add a bike first'); return; }
+  document.getElementById('challanModalTitle').textContent = 'Add Challan / Fine';
+  document.getElementById('editChallanId').value = '';
+  fillChallanBikes();
+  document.getElementById('cDate').value = todayStr();
+  document.getElementById('cAmount').value = '';
+  document.getElementById('cReason').value = '';
+  document.getElementById('cNo').value = '';
+  refreshChallanWho();
+  document.getElementById('challanModalOverlay').classList.remove('hide');
+}
+function editChallan(id){
+  const c = loadChallans().find(x=>x.id === id);
+  if(!c) return;
+  document.getElementById('challanModalTitle').textContent = 'Edit Challan / Fine';
+  document.getElementById('editChallanId').value = c.id;
+  fillChallanBikes(c.bikeId);
+  document.getElementById('cDate').value = c.date || todayStr();
+  document.getElementById('cAmount').value = c.amount;
+  document.getElementById('cReason').value = c.reason || '';
+  document.getElementById('cNo').value = c.challanNo || '';
+  refreshChallanWho(c.rentalId || 0);
+  document.getElementById('challanModalOverlay').classList.remove('hide');
+}
+function closeChallanModal(){ document.getElementById('challanModalOverlay').classList.add('hide'); }
+function saveChallan(){
+  const bikeId = parseInt(document.getElementById('cBike').value);
+  const bike = loadBikes().find(b=>b.id === bikeId);
+  const date = document.getElementById('cDate').value;
+  const amount = parseFloat(document.getElementById('cAmount').value);
+  if(!bike){ alert('Bike தேர்ந்தெடுக்கவும்.'); return; }
+  if(!date){ alert('Challan தேதியை உள்ளிடவும்.'); return; }
+  if(!(amount > 0)){ alert('சரியான Fine amount உள்ளிடவும்.'); return; }
+  const whoId = parseInt(document.getElementById('cWho').value) || 0;
+  const rental = whoId ? loadRentals().find(r=>r.id === whoId) : null;
+  const editId = document.getElementById('editChallanId').value;
+  const list = loadChallans();
+  const fields = {
+    bikeId, bikeName: bike.name, plate: bike.plate, date, amount: roundMoney(amount),
+    reason: document.getElementById('cReason').value.trim(),
+    challanNo: document.getElementById('cNo').value.trim(),
+    rentalId: rental ? rental.id : 0,
+    customerName: rental ? (rental.customerName||'') : '',
+    customerPhone: rental ? (rental.customerPhone||'') : ''
+  };
+  if(editId){
+    const i = list.findIndex(c=>String(c.id) === String(editId));
+    if(i < 0) return;
+    const old = list[i];
+    let status = old.status;
+    if(rental && status === 'owner') status = 'pending';
+    if(!rental && status === 'pending') status = 'owner';
+    list[i] = {...old, ...fields, status};
+  } else {
+    list.push({ id: Date.now(), status: rental ? 'pending' : 'owner', collectedDate: '', createdAt: new Date().toISOString(), ...fields });
+  }
+  if(!saveChallans(list)) return;
+  closeChallanModal();
+  render();
+}
+function deleteChallan(id){
+  const c = loadChallans().find(x=>x.id === id);
+  if(!c) return;
+  if(!confirm(`Delete this challan?\n\n${c.plate} · ${formatDMY(c.date)} · ₹${c.amount}\n\nAre you sure?`)) return;
+  saveChallans(loadChallans().filter(x=>x.id !== id));
+  render();
+}
+function collectChallan(id){
+  const list = loadChallans();
+  const c = list.find(x=>x.id === id);
+  if(!c) return;
+  if(!confirm(`₹${c.amount} ${c.customerName||''}-இடம் இருந்து வசூலானதா?\n\nMark this challan as collected from the customer?`)) return;
+  c.status = 'collected'; c.collectedDate = todayStr();
+  saveChallans(list);
+  render();
+}
+function challanWhatsApp(id){
+  const c = loadChallans().find(x=>x.id === id);
+  if(!c) return;
+  const text = `வணக்கம் ${c.customerName||''},\n` +
+    `நீங்கள் எடுத்திருந்த ${c.bikeName} (${c.plate}) வாகனத்துக்கு ${formatDMY(c.date)} அன்று போக்குவரத்து அபராதம் (e-Challan) ₹${c.amount} விதிக்கப்பட்டுள்ளது.` +
+    `${c.reason ? '\nகாரணம்: ' + c.reason + '.' : ''}${c.challanNo ? '\nChallan No: ' + c.challanNo + '.' : ''}\n` +
+    `தயவுசெய்து இந்தத் தொகையைச் செலுத்தவும்.\n\n` +
+    `Hello ${c.customerName||''}, a traffic fine (e-Challan) of ₹${c.amount} was issued on ${formatDMY(c.date)} for ${c.bikeName} (${c.plate}) while it was with you. Please pay this amount. — MASS BIKE`;
+  const phone = (c.customerPhone||'').replace(/\D/g,'');
+  window.open('https://wa.me/' + waPhone(phone) + '?text=' + encodeURIComponent(text), '_blank');
+}
+function challanCheckDue(bikeId){
+  const last = loadChallanChecks()[bikeId];
+  if(!last) return true;
+  return calcDays(last, todayStr()) >= CHALLAN_CHECK_DAYS;
+}
+function openEChallan(bikeId){
+  const bike = loadBikes().find(b=>b.id === bikeId);
+  if(!bike) return;
+  try{ if(navigator.clipboard) navigator.clipboard.writeText(bike.plate); }catch(e){}
+  const o = loadChallanChecks(); o[bikeId] = todayStr(); saveChallanChecks(o);
+  window.open(ECHALLAN_URL, '_blank');
+  alert(`பைக் எண் நகலெடுக்கப்பட்டது: ${bike.plate}\nஅரசுத் தளத்தில் ஒட்டிச் சரிபார்க்கவும்.\n\nPlate copied. Paste it on the e-Challan site. Marked as checked today.`);
+  render();
+}
+function challanStatusTag(c){
+  if(c.status === 'pending') return '<span class="due-tag due-over">வசூலிக்க வேண்டும்</span>';
+  if(c.status === 'collected') return `<span class="due-tag due-soon" style="background:#e3f1ea;color:#1f6b45;">வசூலானது ${c.collectedDate ? formatDMY(c.collectedDate) : ''}</span>`;
+  return '<span class="due-tag due-soon">உரிமையாளர் பொறுப்பு</span>';
+}
+function challanCardHTML(c){
+  return `
+  <div class="bike-card">
+    <div class="bike-left">
+      <div class="bike-icon">🚨</div>
+      <div class="bike-info">
+        <div class="name">${escapeHTML(c.bikeName||'')} (${escapeHTML(c.plate||'')})</div>
+        <div class="meta">${formatDMY(c.date)}${c.customerName ? ' · ' + escapeHTML(c.customerName) : ''}${c.reason ? '<br>' + escapeHTML(c.reason) : ''}${c.challanNo ? '<br>No: ' + escapeHTML(c.challanNo) : ''}<br>${challanStatusTag(c)}</div>
+      </div>
+    </div>
+    <div class="bike-actions">
+      <div class="name" style="color:var(--rust)">₹${c.amount}</div>
+      ${c.status === 'pending' ? `${c.customerPhone ? `<button class="btn btn-primary btn-sm" onclick="challanWhatsApp(${c.id})">📲 WhatsApp</button>` : ''}<button class="btn btn-outline btn-sm" onclick="collectChallan(${c.id})">✓ Collected</button>` : ''}
+      <button class="btn btn-outline btn-sm" onclick="editChallan(${c.id})">✏️ Edit</button>
+      <button class="btn btn-outline btn-sm" onclick="deleteChallan(${c.id})">🗑️ Delete</button>
+    </div>
+  </div>`;
+}
+function renderChallans(){
+  const bikes = loadBikes();
+  const challans = loadChallans();
+  const pending = challans.filter(c=>c.status === 'pending');
+  const dueBikes = bikes.filter(b=>challanCheckDue(b.id));
+  const pendingTotal = roundMoney(pending.reduce((s,c)=>s+(c.amount||0),0));
+
+  // Dashboard alert
+  document.getElementById('challanAlertSection').innerHTML = (pending.length || dueBikes.length)
+    ? `<div class="alert-card">
+        <div class="alert-head">🚨 Challan / Fine</div>
+        ${pending.slice(0,3).map(c=>`<div class="summary-row" style="border-bottom:1px solid #EFC3B7;align-items:flex-start;">
+          <span>${escapeHTML(c.customerName||'')} · ${escapeHTML(c.plate||'')}<br><span style="font-size:11px;color:#8a8272;font-weight:400;">${formatDMY(c.date)}${c.reason ? ' · ' + escapeHTML(c.reason) : ''}</span><br><span class="amt" style="color:var(--rust);font-size:13px;">₹${c.amount}</span></span>
+          <div style="display:flex;flex-direction:column;gap:6px;">${c.customerPhone ? `<button class="btn btn-primary btn-sm" onclick="challanWhatsApp(${c.id})">📲 Remind</button>` : ''}<button class="btn btn-outline btn-sm" onclick="collectChallan(${c.id})">✓ Collected</button></div>
+        </div>`).join('')}
+        ${pending.length > 3 ? `<div style="font-size:12px;padding:6px 0;">+ ${pending.length-3} more pending challans</div>` : ''}
+        ${dueBikes.length ? `<div class="summary-row" style="align-items:center;"><span>🔎 e-Challan சரிபார்க்க வேண்டியவை: ${dueBikes.length} பைக்</span><button class="btn btn-outline btn-sm" onclick="selectMenuTab('challans')">Open</button></div>` : ''}
+      </div>`
+    : '';
+
+  // Challans tab
+  document.getElementById('challanSummary').innerHTML = `
+    <div class="summary-card">
+      <div class="summary-row"><span>Pending to collect</span><span class="amt" style="color:var(--rust)">₹${pendingTotal} (${pending.length})</span></div>
+      <div class="summary-row"><span>e-Challan check due</span><span class="amt">${dueBikes.length} / ${bikes.length} bikes</span></div>
+    </div>`;
+  document.getElementById('challanCheckList').innerHTML = bikes.length
+    ? bikes.map(b=>{
+        const last = loadChallanChecks()[b.id];
+        const due = challanCheckDue(b.id);
+        return `<div class="bike-card">
+          <div class="bike-left"><div class="bike-icon">🔎</div>
+            <div class="bike-info"><div class="name">${escapeHTML(b.name)} (${escapeHTML(b.plate)})</div>
+            <div class="meta">${last ? 'Last checked: ' + formatDMY(last) : 'இதுவரை சரிபார்க்கவில்லை'} ${due ? '<span class="due-tag due-over">Check due</span>' : '<span class="due-tag due-soon" style="background:#e3f1ea;color:#1f6b45;">OK</span>'}</div></div>
+          </div>
+          <div class="bike-actions"><button class="btn btn-primary btn-sm" onclick="openEChallan(${b.id})">🔎 Check e-Challan</button></div>
+        </div>`;
+      }).join('')
+    : `<div class="empty"><span class="big">🏍️</span>No bikes added yet</div>`;
+  const sorted = [...challans].sort((a,b)=>{
+    const pa = a.status === 'pending' ? 0 : 1, pb = b.status === 'pending' ? 0 : 1;
+    return pa - pb || (b.date||'').localeCompare(a.date||'') || (b.id - a.id);
+  });
+  document.getElementById('challanList').innerHTML = sorted.length
+    ? sorted.map(challanCardHTML).join('')
+    : `<div class="empty"><span class="big">🚨</span>No challans recorded</div>`;
+}
+document.getElementById('challanModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'challanModalOverlay') closeChallanModal();
+});
+
 function bikeBackupData(){
   const bikesData = loadBikes();
   const rentalsData = loadRentals();
@@ -3107,7 +3390,9 @@ function bikeBackupData(){
     version: APP_VERSION,
     recordCounts: { bikes: bikesData.length, rentals: rentalsData.length, expenses: expensesData.length, maintenance: maintenanceData.length },
     checksum: simpleChecksum(JSON.stringify(payload)),
-    ...payload
+    ...payload,
+    challans: loadChallans(),
+    challanChecks: loadChallanChecks()
   };
 }
 function downloadBackup(tag){
@@ -3152,6 +3437,8 @@ function applyBackupData(data){
     {key: MAINT_KEY, value: data.maintenance || []}
   ]);
   if(!okLocalRestore) return false;
+  if(Array.isArray(data.challans)) saveChallans(data.challans.filter(c => c && typeof c === 'object' && c.id != null && /^\d{4}-\d{2}-\d{2}$/.test(String(c.date||''))));
+  if(data.challanChecks && typeof data.challanChecks === 'object' && !Array.isArray(data.challanChecks)) saveChallanChecks(data.challanChecks);
   (data.rentals || []).forEach(r => bumpInvoiceCounterIfNeeded(r && r.invoiceNo));
   alert('Restore complete!');
   render();
@@ -3361,7 +3648,7 @@ function sendWhatsAppReminder(rentalId){
   }
 
   const phone = (r.customerPhone||'').replace(/\D/g,'');
-  const url = 'https://wa.me/' + (phone ? phone : '') + '?text=' + encodeURIComponent(text);
+  const url = 'https://wa.me/' + waPhone(phone) + '?text=' + encodeURIComponent(text);
   window.open(url, '_blank');
 }
 
@@ -3380,7 +3667,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.9.0').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.10.1').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
