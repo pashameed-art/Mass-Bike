@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<title>MASS BIKE V4.10.1</title>
+<title>MASS BIKE V4.10.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -663,7 +663,7 @@
   <!-- BACKUP -->
   <section id="tab-backup" class="hide">
     <div class="summary-card">
-      <div class="summary-row"><span>App Version</span><span class="amt">v4.10.1</span></div>
+      <div class="summary-row"><span>App Version</span><span class="amt">v4.10.2</span></div>
       <div class="summary-row"><span>Bikes</span><span class="amt" id="bkBikes">0</span></div>
       <div class="summary-row"><span>Rentals</span><span class="amt" id="bkRentals">0</span></div>
       <div class="summary-row"><span>Expenses</span><span class="amt" id="bkExpenses">0</span></div>
@@ -738,7 +738,7 @@
 <button class="fab" id="fabBtn" onclick="handleFabClick()">+</button>
 
 <footer>
-  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.10.1</div>
+  <div style="font-weight:700;color:var(--teal);font-size:12.5px;letter-spacing:0.3px;">MASS BIKE V4.10.2</div>
   <div style="margin-top:3px;">Data stored locally on this device · No internet needed</div>
 </footer>
 
@@ -1137,8 +1137,8 @@
 </div>
 
 <script>
-let __repSink; // report cards removed in V4.10.1; old calculations write here and are discarded
-const APP_VERSION = '4.10.1';
+let __repSink; // report cards removed in V4.10.2; old calculations write here and are discarded
+const APP_VERSION = '4.10.2';
 const STORAGE_KEY = 'massBikeV4_bikes';
 const INVOICE_COUNTER_KEY = 'massBikeV4_invoiceCounter';
 const RENTAL_KEY = 'massBikeV4_rentals';
@@ -3151,7 +3151,7 @@ async function appRefresh(){
 }
 
 
-// ================= CHALLANS / FINES (V4.10.1) =================
+// ================= CHALLANS / FINES (V4.10.2) =================
 // e-Challan sites cannot be queried automatically from a phone-only app (government captcha, no public API),
 // so: (1) one tap opens the official site with the plate copied, and a weekly "check due" reminder shows in-app;
 // (2) when a challan is entered, the app finds which customer had that bike on that date.
@@ -3295,13 +3295,15 @@ function challanCheckDue(bikeId){
   if(!last) return true;
   return calcDays(last, todayStr()) >= CHALLAN_CHECK_DAYS;
 }
-function openEChallan(bikeId){
+const PARKPLUS_URL = 'https://parkplus.io/bike-challan';
+function openEChallan(bikeId, site){
   const bike = loadBikes().find(b=>b.id === bikeId);
   if(!bike) return;
+  const gov = site === 'gov';
   try{ if(navigator.clipboard) navigator.clipboard.writeText(bike.plate); }catch(e){}
   const o = loadChallanChecks(); o[bikeId] = todayStr(); saveChallanChecks(o);
-  window.open(ECHALLAN_URL, '_blank');
-  alert(`பைக் எண் நகலெடுக்கப்பட்டது: ${bike.plate}\nஅரசுத் தளத்தில் ஒட்டிச் சரிபார்க்கவும்.\n\nPlate copied. Paste it on the e-Challan site. Marked as checked today.`);
+  window.open(gov ? ECHALLAN_URL : PARKPLUS_URL, '_blank');
+  alert(`பைக் எண் நகலெடுக்கப்பட்டது: ${bike.plate}\n${gov ? 'அரசுத் தளத்தில்' : 'Park+ பக்கத்தில்'} ஒட்டிச் சரிபார்க்கவும்.\n\nPlate copied. Paste it on ${gov ? 'the Parivahan e-Challan site' : 'the Park+ page'}. Marked as checked today.` + (gov ? '' : '\n\nOTP கேட்டால், அது RC-யில் பதிவான மொபைலுக்கு வரும்.'));
   render();
 }
 function challanStatusTag(c){
@@ -3362,7 +3364,7 @@ function renderChallans(){
             <div class="bike-info"><div class="name">${escapeHTML(b.name)} (${escapeHTML(b.plate)})</div>
             <div class="meta">${last ? 'Last checked: ' + formatDMY(last) : 'இதுவரை சரிபார்க்கவில்லை'} ${due ? '<span class="due-tag due-over">Check due</span>' : '<span class="due-tag due-soon" style="background:#e3f1ea;color:#1f6b45;">OK</span>'}</div></div>
           </div>
-          <div class="bike-actions"><button class="btn btn-primary btn-sm" onclick="openEChallan(${b.id})">🔎 Check e-Challan</button></div>
+          <div class="bike-actions"><button class="btn btn-primary btn-sm" onclick="openEChallan(${b.id},'parkplus')">🔎 Park+</button><button class="btn btn-outline btn-sm" onclick="openEChallan(${b.id},'gov')">🏛️ Parivahan</button></div>
         </div>`;
       }).join('')
     : `<div class="empty"><span class="big">🏍️</span>No bikes added yet</div>`;
@@ -3667,7 +3669,7 @@ setInterval(()=>{
 
 // Register the real same-origin service worker (sw.js) for genuine offline-first caching
 if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
-  navigator.serviceWorker.register('./sw.js?v=4.10.1').catch(()=>{});
+  navigator.serviceWorker.register('./sw.js?v=4.10.2').catch(()=>{});
 }
 
 // Keep modal fields visible when the mobile keyboard opens
