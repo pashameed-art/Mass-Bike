@@ -991,6 +991,11 @@
       <label>Total Amount (₹)</label>
       <input type="number" id="retAmount">
     </div>
+    <div class="field" id="retChallanBox" style="background:#fff7e0;border:1px solid #e6c766;border-radius:10px;padding:10px">
+      <label>🚨 RTO / Traffic Fine Check (Park+)</label>
+      <div class="meta" id="retChallanNote" style="margin-bottom:8px"></div>
+      <button type="button" class="btn btn-primary btn-sm" id="retChallanBtn">🔎 Park+ e-Challan திற</button>
+    </div>
     <div class="field">
       <label>Fine / Late Charge (₹)</label>
       <input type="number" id="retFine" value="0" placeholder="e.g. 100">
@@ -2448,6 +2453,23 @@ function openReturnModal(rentalId){
   document.getElementById('retAmount').oninput = ()=>updateReturnCalc(rental);
   updateReturnCalc(rental);
   document.getElementById('returnModalOverlay').classList.remove('hide');
+  retFineCheck(rental, true);
+}
+// Return தட்டும்போது Park+ e-Challan பக்கம் திறக்கும்; பைக் எண் copy ஆகும்.
+function retFineCheck(rental, auto){
+  const bikes = loadBikes();
+  const bike = bikes.find(b=>b.id === rental.bikeId) || bikes.find(b=>b.name === rental.bikeName);
+  const note = document.getElementById('retChallanNote');
+  const btn = document.getElementById('retChallanBtn');
+  if(!bike){
+    note.textContent = 'பைக் விவரம் கிடைக்கவில்லை. Challans tab-ல் சரிபார்க்கவும்.';
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  btn.onclick = ()=>retFineCheck(rental, false);
+  openEChallan(bike.id, 'parkplus', true);
+  note.innerHTML = 'பைக் எண் <b>' + escapeHTML(bike.plate) + '</b> நகலெடுக்கப்பட்டது. Park+ பக்கத்தில் Paste செய்து Fine இருக்கிறதா என்று பார்க்கவும். இருந்தால் கீழே Fine பெட்டியில் உள்ளிடவும் (அல்லது Challans tab-ல் சேர்க்கவும்). OTP கேட்டால் அது RC-யில் பதிவான மொபைலுக்கு வரும்.';
 }
 function updateReturnCalc(rental){
   const returnDate = document.getElementById('rReturnDate').value || todayStr();
@@ -3295,15 +3317,15 @@ function challanCheckDue(bikeId){
   if(!last) return true;
   return calcDays(last, todayStr()) >= CHALLAN_CHECK_DAYS;
 }
-const PARKPLUS_URL = 'https://parkplus.io/bike-challan';
-function openEChallan(bikeId, site){
+const PARKPLUS_URL = 'https://parkplus.io/e-challan';
+function openEChallan(bikeId, site, quiet){
   const bike = loadBikes().find(b=>b.id === bikeId);
   if(!bike) return;
   const gov = site === 'gov';
   try{ if(navigator.clipboard) navigator.clipboard.writeText(bike.plate); }catch(e){}
   const o = loadChallanChecks(); o[bikeId] = todayStr(); saveChallanChecks(o);
   window.open(gov ? ECHALLAN_URL : PARKPLUS_URL, '_blank');
-  alert(`பைக் எண் நகலெடுக்கப்பட்டது: ${bike.plate}\n${gov ? 'அரசுத் தளத்தில்' : 'Park+ பக்கத்தில்'} ஒட்டிச் சரிபார்க்கவும்.\n\nPlate copied. Paste it on ${gov ? 'the Parivahan e-Challan site' : 'the Park+ page'}. Marked as checked today.` + (gov ? '' : '\n\nOTP கேட்டால், அது RC-யில் பதிவான மொபைலுக்கு வரும்.'));
+  if(!quiet) alert(`பைக் எண் நகலெடுக்கப்பட்டது: ${bike.plate}\n${gov ? 'அரசுத் தளத்தில்' : 'Park+ பக்கத்தில்'} ஒட்டிச் சரிபார்க்கவும்.\n\nPlate copied. Paste it on ${gov ? 'the Parivahan e-Challan site' : 'the Park+ page'}. Marked as checked today.` + (gov ? '' : '\n\nOTP கேட்டால், அது RC-யில் பதிவான மொபைலுக்கு வரும்.'));
   render();
 }
 function challanStatusTag(c){
