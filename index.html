@@ -3604,8 +3604,7 @@ function getDueSummary(){
 }
 
 function checkDailyDueReminder(){
-  const lastShown = localStorage.getItem('massBikeV4_lastReminderDate');
-  if(lastShown === todayStr()) return; // show at most once per day
+  // app திறக்கும் ஒவ்வொரு முறையும் காட்டும் (Pending இருந்தால்)
 
   const {longPending, serviceDue, currentBikes} = getDueSummary();
   const returnedPending = loadRentals().filter(r => r.status==='returned' && (r.balance||0) > 0);
@@ -3638,6 +3637,7 @@ function checkDailyDueReminder(){
         </span>
         <div style="display:flex;flex-direction:column;gap:6px;">
           <button class="btn btn-primary btn-sm" onclick="sendWhatsAppReminder(${r.id})">📲 Remind</button>
+          <button class="btn btn-outline btn-sm" onclick="closeDueReminder();openAddPaymentModal(${r.id})">💰 Payment</button>
           <button class="btn btn-outline btn-sm" onclick="callCustomer(${r.id})">📞 Call</button>
         </div>
       </div>`;
