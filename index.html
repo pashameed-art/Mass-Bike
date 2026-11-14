@@ -1547,6 +1547,7 @@ function render(){
             </span>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <button class="btn btn-primary btn-sm" onclick="sendWhatsAppReminder(${r.id})">📲 Remind</button>
+              <button class="btn btn-outline btn-sm" onclick="openAddPaymentModal(${r.id})">💰 Payment</button>
               <button class="btn btn-outline btn-sm" onclick="callCustomer(${r.id})">📞 Call</button>
             </div>
           </div>`;
@@ -2181,7 +2182,8 @@ function rentalCardHTML(r){
            <button class="btn btn-outline btn-sm" onclick="openAddPaymentModal(${r.id})">💰 Payment</button>
            <button class="btn btn-outline btn-sm" onclick="sendWhatsAppReminder(${r.id})">📲 Remind</button>
            <button class="btn btn-outline btn-sm" onclick="callCustomer(${r.id})">📞 Call</button>`
-        : `<button class="btn btn-outline btn-sm" onclick="editReturnedRental(${r.id})">✏️ Edit</button>`}
+        : `<button class="btn btn-outline btn-sm" onclick="editReturnedRental(${r.id})">✏️ Edit</button>${(r.balance||0) > 0 ? `
+           <button class="btn btn-primary btn-sm" onclick="openAddPaymentModal(${r.id})">💰 Payment</button>` : ''}`}
       <button class="btn btn-outline btn-sm" onclick="openReceipt(${r.id})">🧾 Receipt</button>
     </div>
   </div>`;
@@ -2330,9 +2332,10 @@ function openAddPaymentModal(rentalId){
   const r = loadRentals().find(x=>x.id===rentalId);
   if(!r) return;
   document.getElementById('paymentRentalId').value = r.id;
-  document.getElementById('paymentInfo').value = `${r.bikeName} · ${r.customerName}`;
-  document.getElementById('paymentAlreadyPaid').value = '₹' + totalPaidSoFar(r);
-  document.getElementById('paymentAmount').value = '';
+  const _ret = r.status === 'returned';
+  document.getElementById('paymentInfo').value = `${r.bikeName} · ${r.customerName}` + (_ret ? ` · Balance ₹${r.balance||0}` : '');
+  document.getElementById('paymentAlreadyPaid').value = '₹' + roundMoney(totalPaidSoFar(r) + (_ret ? (r.received||0) : 0));
+  document.getElementById('paymentAmount').value = (_ret && (r.balance||0) > 0) ? r.balance : '';
   document.getElementById('paymentDate').value = todayStr();
   document.getElementById('paymentNote').value = '';
   document.getElementById('addPaymentModalOverlay').classList.remove('hide');
@@ -2353,12 +2356,19 @@ function saveAddPayment(){
     if(amount > _due + 0.005 && !confirm(`இந்த payment (₹${amount}) இப்போதைய மீதித் தொகையை (₹${Math.max(_due,0)}) விட அதிகம்.\n\nThis payment is more than the current due (₹${Math.max(_due,0)}). Continue?`)) return;
   }
 
+  if(_rn && _rn.status === 'returned'){
+    const _b = roundMoney(_rn.balance||0);
+    if(amount > _b + 0.005 && !confirm(`இந்த payment (₹${amount}) மீதித் தொகையை (₹${Math.max(_b,0)}) விட அதிகம்.\n\nThis payment is more than the balance (₹${Math.max(_b,0)}). Continue?`)) return;
+  }
   const rentals = loadRentals();
   const updated = rentals.map(r=>{
     if(r.id !== rentalId) return r;
-    const payments = r.payments || [];
+    const payments = (r.payments || []).slice();
     payments.push({id: Date.now(), amount, date, note});
-    return {...r, payments};
+    const out = {...r, payments};
+    // Return ஆன rental: வசூலான தொகையை Balance-ல் இருந்து குறைக்கும் (Audit சரியாக இருக்க)
+    if(r.status === 'returned') out.balance = roundMoney((r.balance||0) - amount);
+    return out;
   });
   saveRentals(updated);
   closeAddPaymentModal();
