@@ -2455,7 +2455,7 @@ function openReturnModal(rentalId){
   document.getElementById('returnModalOverlay').classList.remove('hide');
   retFineCheck(rental, true);
 }
-// Return தட்டும்போது Park+ e-Challan பக்கம் திறக்கும்; பைக் எண் copy ஆகும்.
+// Return திரையில் Fine Check பெட்டி காட்டும்; பட்டனைத் தட்டினால் மட்டும் Park+ திறக்கும், பைக் எண் copy ஆகும்.
 function retFineCheck(rental, auto){
   const bikes = loadBikes();
   const bike = bikes.find(b=>b.id === rental.bikeId) || bikes.find(b=>b.name === rental.bikeName);
@@ -2468,6 +2468,10 @@ function retFineCheck(rental, auto){
   }
   btn.style.display = '';
   btn.onclick = ()=>retFineCheck(rental, false);
+  if(auto){
+    note.innerHTML = 'பைக் எண்: <b>' + escapeHTML(bike.plate) + '</b><br>Fine இருக்கிறதா என்று பார்க்க கீழே உள்ள பட்டனைத் தட்டவும்.';
+    return;
+  }
   openEChallan(bike.id, 'parkplus', true);
   note.innerHTML = 'பைக் எண் <b>' + escapeHTML(bike.plate) + '</b> நகலெடுக்கப்பட்டது. Park+ பக்கத்தில் Paste செய்து Fine இருக்கிறதா என்று பார்க்கவும். இருந்தால் கீழே Fine பெட்டியில் உள்ளிடவும் (அல்லது Challans tab-ல் சேர்க்கவும்). OTP கேட்டால் அது RC-யில் பதிவான மொபைலுக்கு வரும்.';
 }
